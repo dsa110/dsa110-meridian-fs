@@ -7,6 +7,7 @@ setup(name='dsa110-meridian-fs',
       author_email='dana.simard@astro.caltech.edu',
       packages=['dsamfs'],
       package_data={'dsamfs':['data/*.all','data/templatekcal']},
-      requirements=['casa-python','casa-data','astropy','scipy','psrdada-python','h5py','numba'],
+      requirements=['dsacalib','casa-python','casa-data',
+                    'astropy','scipy','psrdada-python','h5py','numba'],
       zip_safe=False)
 

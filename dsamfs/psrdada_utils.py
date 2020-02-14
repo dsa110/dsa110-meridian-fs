@@ -1,5 +1,14 @@
+"""
+PSRSDADA_UTILS.PY
+
+Dana Simard, dana.simard@astro.caltech.edu, 02/2020
+
+Utilities to interact with the psrdada buffer written to
+by the DSA-110 correlator
+"""
+
 import dsacalib.constants as ct
-from dsacalib.fringestopping import *
+from dsamfs.fringestopping import *
 import numpy as np
 
 def read_header(reader):
@@ -144,10 +153,9 @@ def load_visibility_model(fs_table,antenna_order,nint,nbls,fobs):
         print('Creating new fringestopping table.')
         df_bls = get_baselines(antenna_order,autocorrs=True,casa_order=False)
         blen   = np.array([df_bls['x_m'],df_bls['y_m'],df_bls['z_m']]).T
-        generate_fringestopping_table(blen,nint,transpose=True,
-                                     outname=fs_table)
+        generate_fringestopping_table(blen,nint,outname=fs_table)
         os.link(fs_table,
             '{0}_{1}.npz'.format(fs_table.strip('.npz'),
             datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')))
-    vis_model = zenith_visibility_model_T(fobs,fs_table)
+    vis_model = zenith_visibility_model(fobs,fs_table)
     return vis_model

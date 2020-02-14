@@ -9,9 +9,10 @@ sample, before integrating the data and writing it to a hdf5 file.
 
 import numpy as np
 from psrdada import Reader
-from dsacalib.psrdada_utils import *
-from dsacalib.fringestopping import *
+from dsamfs.psrdada_utils import *
+from dsamfs.fringestopping import *
 from dsacalib.utils import *
+from dsamfs.hdf5_utils import *
 from antpos.utils import *
 import h5py
 import os
@@ -69,7 +70,7 @@ with h5py.File('{0}.hdf5'.format(fname), 'w') as f:
                 # on the right number of frames
                 exit
         
-        data = fringestop_on_zenith_T(
+        data = fringestop_on_zenith(
             data_in.reshape(-1,nbls,nchan,npol),
                                       vis_model,nint)
 
