@@ -1,3 +1,3 @@
-# dsa110-calib
-Calibration routines for DSA-110
+# dsa110-meridian-fs
+Routines to fringestop DSA-110 visibilities on the meridian and integrate visibilities
 
