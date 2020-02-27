@@ -71,7 +71,7 @@ def zenith_visibility_model(fobs,fstable='fringestopping_table.npz'):
                        bws[np.newaxis,:,:,np.newaxis,np.newaxis])
     return vis_model
 
-def fringestop_on_zenith(vis,vis_model,nint):
+def fringestop_on_zenith(vis,vis_model,nint,nans=False):
     """Fringestops on HA=0, DEC=pointing declination for the midpoint of each   
     integration and then integrates the data.  The number of samples to integrate 
     by is set by the length of the bw array in bw_file.
@@ -91,13 +91,19 @@ def fringestop_on_zenith(vis,vis_model,nint):
       vis: complex array
         The fringe-stopped and integrated visibilities
     """
-    if vis.shape[0]%nint != 0:
-        npad = nint - vis.shape[0]%nint
-        print('Warning: Padding array to integrate.  Last bin contains only {0}% real data.'.format((nint-npad)/nint*100))
-        vis = np.pad(vis,((0,npad),(0,0),(0,0),(0,0)),mode='constant',
-                 constant_values=(0.,))
+    # Remove the padding to save time - assume the user has done this correctly
+#     if vis.shape[0]%nint != 0:
+#         npad = nint - vis.shape[0]%nint
+#         print('Warning: Padding array to integrate.  Last bin contains only {0}% real data.'.format((nint-npad)/nint*100))
+#         vis = np.pad(vis,((0,npad),(0,0),(0,0),(0,0)),mode='constant',
+#                  constant_values=(np.nan,))
+#         nans = True
     nt,nbl,nchan,npol = vis.shape
-    vis = fringestop_on_zenith_worker(vis,vis_model,nint,nbl,nchan,npol)
+    if not nans:
+        vis = fringestop_on_zenith_worker(vis,vis_model,nint,nbl,nchan,npol)
+    else:
+        vis = vis.reshape(-1,nint,nbl,nchan,npol)/vis_model
+        vis = np.nanmean(vis,axis=1)
     return vis
 
 def write_fs_delay_table(msname,source,blen,tobs,nant):

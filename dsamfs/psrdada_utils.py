@@ -10,6 +10,9 @@ by the DSA-110 correlator
 import dsacalib.constants as ct
 from dsamfs.fringestopping import *
 import numpy as np
+from antpos.utils import *
+import os
+from datetime import datetime
 
 def read_header(reader):
     """
@@ -85,23 +88,6 @@ def update_time(tstart,samples_per_frame,sample_rate):
     tstart += samples_per_frame/sample_rate
     return t,tstart
 
-# def get_antpos(antenna_order,antpos,casaorder=True):
-#     aname = antenna_order[::-1]
-#     tp    = np.loadtxt(antpos)
-#     blen  = []
-#     bname = []
-#     for i in np.arange(9)+1:
-#         for j in np.arange(i):
-#             a1 = int(aname[i])-1
-#             a2 = int(aname[j])-1
-#             bname.append([a1+1,a2+1])
-#             blen.append(tp[a1,1:]-tp[a2,1:])
-#     blen  = np.array(blen)
-#     if casaorder:
-#         blen = blen[::-1]
-#         bname = bname[::-1]
-#     return blen, bname
-
 def integrate(data,nint):
     """
     A simple integration for testing and benchmarking.  
@@ -124,7 +110,8 @@ def integrate(data,nint):
     data = data.reshape(-1,nint,nbls,nchan,npol).mean(1)
     return data
 
-def load_visibility_model(fs_table,antenna_order,nint,nbls,fobs):
+def load_visibility_model(fs_table,antenna_order,nint,nbls,fobs,
+                         ant_delay_tbl=None):
     """
     Load the visibility model for fringestopping.  If the path
     to the file does not exist or if the model is for a 
@@ -145,6 +132,9 @@ def load_visibility_model(fs_table,antenna_order,nint,nbls,fobs):
     Returns:
         vis_model: array(complex)
             the visibility model to use for fringestopping
+            
+    Order  may not be correct! Need to verify the antenna order that the 
+    correlator uses.
     """
     try:
         fs_data = np.load(fs_table)
@@ -157,5 +147,47 @@ def load_visibility_model(fs_table,antenna_order,nint,nbls,fobs):
         os.link(fs_table,
             '{0}_{1}.npz'.format(fs_table.strip('.npz'),
             datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')))
+        
     vis_model = zenith_visibility_model(fobs,fs_table)
+
+    if ant_delay_tbl is not None:
+        bl_delays = load_antenna_delays(ant_delay_table,len(antenna_order))
+        vis_model /= np.exp(2j*np.pi*fobs[:,np.newaxis]*bl_delays[:,np.newaxis,:])
+    
     return vis_model
+
+def load_antenna_delays(ant_delay_table,nant,npol=2):
+    """ Load antenna delays from a CASA calibration table.  
+    
+    Args:
+      ant_delay_table: str
+        the full path to the calibration table
+      nant: int 
+        the number of antennas
+      npol: int
+        the number of polarizations
+    
+    Returns:
+      bl_delays: array(float)
+        dimensions (nbaselines, npol)
+        the relative delay per baseline in nanoseconds
+        baselines are in anti-casa order
+    
+    """
+    error = 0
+    tb = cc.table.table()
+    error += not tb.open(ant_delay_table)
+    antenna_delays = tb.getcol('FPARAM')
+    npol = antenna_delays.shape[0]
+    antenna_delays = antenna_delays.reshape(npol,-1,nant)
+    error += not tb.close()
+    
+    bl_delays = np.zeros(((nant*(nant+1))//2,npol))
+    idx = 0
+    for i in np.arange(nant):
+        for j in np.arange(i+1):
+            #j-i or i-j ?
+            bl_delays[idx,:] = antenna_delays[:,0,j]-antenna_delays[:,0,i]
+            
+    return bl_delays
+    
