@@ -8,7 +8,6 @@ dist: bionic
 branches:
   only:
     - master
-    - development
 
 before_install:
   - sudo apt-get install gfortran
