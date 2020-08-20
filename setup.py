@@ -32,7 +32,7 @@ setup(name='dsa110-meridian-fs',
           "https://github.com/dsa110/dsa110-pyutils/tarball/ds/dev#egg=dsa110-pyutils-0",
           "https://casa-pip.nrao.edu/repository/pypi-casa-release/simple",
           "https://github.com/dsa110/dsa110-calib/master#egg=dsa110-calib-0",
-          "https://github.com/AA-ALERT/psrdada-python/master#egg=psrdada",
+          "https://github.com/AA-ALERT/psrdada-python/master#egg=psrdada-0",
           ],
       zip_safe=False)
 
