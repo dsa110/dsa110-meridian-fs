@@ -3,13 +3,25 @@
 # gfortran install
 # psrdada installed with the -fPIC flag
 
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-bash miniconda.sh -b -p $HOME/miniconda
-source "$HOME/miniconda/etc/profile.d/conda.sh"
-conda config --set always_yes yes --set changeps1 no
-conda update -q conda
-conda info -a
-conda env create -f environment.yml
+if ! type "conda" > /dev/null
+then
+  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  bash miniconda.sh -b -p $HOME/miniconda
+  source "$HOME/miniconda/etc/profile.d/conda.sh"
+  conda update -q conda --yes
+  conda info -a
+else
+  echo "Anaconda already installed"
+fi
+ENV_DIR=$(conda info --base)
+MY_ENV_DIR="$ENV_DIR/envs/casa6"
+if [ -d "$MY_ENV_DIR" ]
+then
+  echo "Found casa6 environment in $MY_ENV_DIR. Skipping installation..."
+else
+  echo "casa6 environment is missing is missing in $ENV_DIR. Installing ..."
+conda env create -f environment.yml --yes
+fi
 # CASA install
 conda activate casa6
 pip install casatools --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
