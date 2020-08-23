@@ -25,7 +25,7 @@ setup(name='dsa110-meridian-fs',
                         'dsa110-antpos',
                         'dsa110-pyutils',
                         'dsa110-calib',
-                        'psrdada-python',
+                        'psrdada',
                         ],
       dependency_links=[
           "https://github.com/dsa110/dsa110-antpos/tarball/master#egg=dsa110-antpos-0",
