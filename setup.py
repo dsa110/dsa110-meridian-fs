@@ -28,11 +28,11 @@ setup(name='dsa110-meridian-fs',
                         'psrdada',
                         ],
       dependency_links=[
-          "https://github.com/dsa110/dsa110-antpos/tarball/master#egg=dsa110-antpos-0",
-          "https://github.com/dsa110/dsa110-pyutils/tarball/ds/dev#egg=dsa110-pyutils-0",
+          "https://github.com/dsa110/dsa110-antpos/tarball/master#egg=dsa110-antpos",
+          "https://github.com/dsa110/dsa110-pyutils/tarball/ds/dev#egg=dsa110-pyutils",
           "https://casa-pip.nrao.edu/repository/pypi-casa-release/simple",
-          "https://github.com/dsa110/dsa110-calib/master#egg=dsa110-calib-0",
-          "https://github.com/AA-ALERT/psrdada-python/master#egg=psrdada-0",
+          "https://github.com/dsa110/dsa110-calib/master#egg=dsa110-calib",
+          "https://github.com/AA-ALERT/psrdada-python/master#egg=psrdada",
           ],
       zip_safe=False)
 
