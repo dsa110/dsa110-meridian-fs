@@ -28,8 +28,8 @@ install:
     - pip install casadata --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
     - git clone git://git.code.sf.net/p/psrdada/code psrdada
     - cd psrdada
-    - ./bootstrap
-    - ./configure
+    - bash ./bootstrap
+    - bash ./configure
     - make
     - make install
     - cd ..
