@@ -27,7 +27,8 @@ install:
     - pip install casatools==6.0.0.27 --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
     - pip install casatasks==6.0.0.27 --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
     - pip install casadata --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
-    - python setup.py install
+    - pip install git+https://github.com/dsa110/dsa110-calib.git
+    - python setup.py develop --no-deps
 
 before_script:
   - git config --global user.email "dana.simard@gmail.com"
