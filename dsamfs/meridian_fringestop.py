@@ -16,7 +16,7 @@ from psrdada import Reader
 import dsacalib.constants as ct
 import dsamfs.psrdada_utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
-from dsamfs.hdf5_utils import initialize_hdf5_file
+from dsacalib.hdf5_io import initialize_hdf5_file
 import dsamfs
 import dsautils.dsa_syslog as dsl
 

@@ -11,7 +11,7 @@ branches:
     - development
 
 before_install:
-  - sudo apt-get install gfortran
+  - sudo apt-get install libgfortran3 gcc wget
 
 install:
     - sudo apt-get update
@@ -24,8 +24,8 @@ install:
     - conda info -a
     - conda env create -f environment.yml
     - conda activate casa6
-    - pip install casatools --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
-    - pip install casatasks --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
+    - pip install casatools==6.0.0.27 --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
+    - pip install casatasks==6.0.0.27 --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
     - pip install casadata --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
     - python setup.py install
 
