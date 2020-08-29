@@ -15,18 +15,12 @@ before_install:
 
 install:
     - sudo apt-get update
-    - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-    - bash miniconda.sh -b -p $HOME/miniconda
-    - source "$HOME/miniconda/etc/profile.d/conda.sh"
-    - hash -r
-    - conda config --set always_yes yes --set changeps1 no
-    - conda update -q conda
-    - conda info -a
-    - conda env create -f environment.yml
-    - conda activate casa6
+    - pip install -r requirements.txt
     - pip install casatools==6.0.0.27 --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
     - pip install casatasks==6.0.0.27 --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
     - pip install casadata --index-url https://casa-pip.nrao.edu/repository/pypi-casa-release/simple --no-cache-dir
+    - pip install git+https://github.com/dsa110/dsa110-antpos.git
+    - pip install git+https://github.com/dsa110/dsa110-pyutils.git@ds/dev
     - pip install git+https://github.com/dsa110/dsa110-calib.git
     - python setup.py develop --no-deps
 
