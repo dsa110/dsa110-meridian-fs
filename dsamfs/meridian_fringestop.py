@@ -16,7 +16,8 @@ from psrdada import Reader
 import dsacalib.constants as ct
 import dsamfs.psrdada_utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
-from dsacalib.hdf5_io import initialize_hdf5_file
+from dsamfs.uvh5_utils import initialize_uvh5_file, update_uvh5_file
+from dsacalib.fringestopping import calc_uvw
 import dsamfs
 import dsautils.dsa_syslog as dsl
 
@@ -27,8 +28,8 @@ logger.app("dsamfs")
 def parse_param_file(param_file):
     """Parses parameter file.
 
-    Params
-    ------
+    Parameters
+    ----------
     param_file : str
         The full path to the json parameter file.
     """
@@ -50,12 +51,14 @@ def parse_param_file(param_file):
     fobs = params['f0_GHz']+dfreq/2+np.arange(nchan)*dfreq
     if not params['chan_ascending']:
         fobs = fobs[::-1]
+    pt_dec = params['pt_dec'] # in radians
 
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
     return test, key_string, nant, nchan, npol, fobs, fout, \
-        samples_per_frame, samples_per_frame_out, nint, fs_table, antenna_order
+        samples_per_frame, samples_per_frame_out, nint, fs_table, \
+        antenna_order, pt_dec
 
 def main(param_file):
     """Read in data, fringestop on zenith, and write to hdf5 file.
@@ -69,13 +72,14 @@ def main(param_file):
         param_file = '{0}/meridian_fringestopping_parameters.json'.format(
             dsamfs.__path__[0])
     test, key_string, nant, nchan, npol, fobs, fout, samples_per_frame, \
-        samples_per_frame_out, nint, fs_table, antenna_order = \
+        samples_per_frame_out, nint, fs_table, antenna_order, pt_dec = \
         parse_param_file(param_file)
     nbls = (nant*(nant+1))//2
     key = int('0x{0}'.format(key_string), 16)
+    bname, blen, uvw, ant_itrf = antenna_positions(antenna_order, pt_dec)
     # Get the visibility model
-    vis_model = pu.load_visibility_model(fs_table, antenna_order, nint, nbls,
-                                         fobs)
+    vis_model = pu.load_visibility_model(fs_table, blen, nint, fobs, pt_dec)
+    
     logger.info("Started fringestopping of dada buffer {0} with {1} "
                 "integrations and {2} baselines. Fringestopped data written "
                 "to {2}.hdf5".format(key_string, nint, nbls, fout))
@@ -112,8 +116,7 @@ def main(param_file):
 
     print('Opening output file {0}.hdf5'.format(fout))
     with h5py.File('{0}.hdf5'.format(fout), 'w') as fhdf5:
-        _vis_ds, _t_ds = initialize_hdf5_file(fhdf5, fobs, antenna_order, t0,
-                                              nbls, nchan, npol, nant)
+        initialize_uvh5_file(fhdf5,)
 
         idx_frame_out = 0
         while not nans:
@@ -130,16 +133,14 @@ def main(param_file):
 
             data = fringestop_on_zenith(data_in, vis_model, nans)
 
-            # Write out the data
+            # Write out the data - can vary how often we write out the data and
+            # could also write out the metadata in the header only when the
+            # file is closed.
+            # This part should be put into it's own function
             t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                        sample_rate_out)
-            fhdf5["vis"].resize((idx_frame_out+1)*samples_per_frame_out,
-                                axis=0)
-            fhdf5["time_seconds"].resize((idx_frame_out+1)*
-                                         samples_per_frame_out, axis=0)
-            fhdf5["vis"][idx_frame_out*samples_per_frame_out:, ...] = data
-            fhdf5["time_seconds"][idx_frame_out*samples_per_frame_out:] = t
-
+            update_uvh5_file(fhdf5, data, t, new_size, old_size, nbls, tsamp)
+            
             idx_frame_out += 1
             print('Integration {0} done'.format(idx_frame_out))
 

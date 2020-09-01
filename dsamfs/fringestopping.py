@@ -14,7 +14,7 @@ import astropy.units as u
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
 
-def generate_fringestopping_table(blen, pt_dec, nint=ct.NINT, tsamp=ct.TSAMP,
+def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
                                   outname='fringestopping_table',
                                   mjd0=58849.0):
     """Generates a table of the w vectors towards a source.

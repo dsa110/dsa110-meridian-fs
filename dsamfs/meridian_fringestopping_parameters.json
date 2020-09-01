@@ -12,6 +12,7 @@
     "samples_per_frame_out": 1,
     "nint": 24,
     "fs_table": "fringestopping_table.npz",
+    "pt_dec": 0.71094487066,
     "antenna_order": [1,
                       2,
                       3,

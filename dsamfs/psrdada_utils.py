@@ -122,7 +122,7 @@ def integrate(data, nint):
     data = data.reshape(-1, nint, nbls, nchan, npol).mean(1)
     return data
 
-def load_visibility_model(fs_table, antenna_order, nint, nbls, fobs,
+def load_visibility_model(fs_table, blen, nint, fobs, pt_dec,
                           ant_delay_tbl=None):
     """
     Load the visibility model for fringestopping.
@@ -150,12 +150,11 @@ def load_visibility_model(fs_table, antenna_order, nint, nbls, fobs,
     """
     try:
         fs_data = np.load(fs_table)
-        assert fs_data['bw'].shape == (nint, nbls)
+        assert fs_data['bw'].shape == (nint, blen.shape[0])
     except (FileNotFoundError, AssertionError):
         print('Creating new fringestopping table.')
-        df_bls = get_baselines(antenna_order, autocorrs=True, casa_order=False)
-        blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
-        generate_fringestopping_table(blen, nint, outname=fs_table)
+        generate_fringestopping_table(blen, pt_dec, nint, tsamp,
+                                      outname=fs_table)
         os.link(fs_table,
                 '{0}_{1}.npz'.format(
                     fs_table.strip('.npz'),
@@ -204,4 +203,43 @@ def load_antenna_delays(ant_delay_table, nant, npol=2):
             bl_delays[idx, :] = antenna_delays[:, 0, j]-antenna_delays[:, 0, i]
 
     return bl_delays
+
+def antenna_positions(antenna_order, pt_dec, autocorrs=True, casa_order=False):
+    raise NotImplementedError
+    """Calculates the antenna positions and baseline coordinates.
     
+    Parameters
+    ----------
+    antenna_order : list
+        The names of the antennas in correct order.
+    pt_dec : float
+        The pointing declination in radians.
+    autocorrs : bool
+        Whether to consider only cross-correlations or both cross-correlations
+        and auto-correlations when constructing baselines. Defaults True.
+    casa_order : bool
+        Whether the baselines are organized in casa order (e.g. [1-1, 1-2, 1-3,
+        2-2, 2-3, 3-3]) or the reverse. Defaults False.
+    
+    Returns
+    -------
+    bname : list
+        The names of the baselines, e.g. ['1-1', '1-2', '2-2'].
+    blen : ndarray
+        The itrf coordinates of the baselines, dimensions (nbaselines, 3).
+    uvw : ndarray
+        The uvw coordinates of the baselines for a phase reference at meridian.
+        Dimensions (nbaselines, 3).
+    ant_itrf : ndarray
+        The ITRF coordinates of the antenna positions relative to the center of
+        the array.  Dimensions (nants, 3).
+    """
+    df_bls = get_baselines(antenna_order, autocorrs, casa_order)
+    bname = df_bls['bname']
+    blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
+    bu, bv, bw = calc_uvw(blen, 58849.0, 'HADEC', 0.*u.deg,
+                          (pt_dec*u.rad).to(u.deg))
+    uvw = np.array([bu, bv, bw]).T
+    # also need the itrf coordinates of the antennas
+    
+    return bname, blen, uvw, ant_itrf
