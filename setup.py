@@ -6,6 +6,9 @@ setup(name='dsa110-meridian-fs',
       author='Dana Simard',
       author_email='dana.simard@astro.caltech.edu',
       packages=['dsamfs'],
+      package_data={
+                'dsamfs': ['data/*.txt', 'data/*.json'],
+             },
       install_requires=['astropy',
                         'casatools',
                         'casadata',
@@ -26,13 +29,13 @@ setup(name='dsa110-meridian-fs',
                         'dsa110-pyutils',
                         'dsa110-calib',
                         'psrdada',
+                        'pyuvdata'
                         ],
       dependency_links=[
-          "https://github.com/dsa110/dsa110-antpos/tarball/master#egg=dsa110-antpos",
+          "https://github.com/dsa110/dsa110-antpos/tarball/ds/dev#egg=dsa110-antpos",
           "https://github.com/dsa110/dsa110-pyutils/tarball/ds/dev#egg=dsa110-pyutils",
           "https://casa-pip.nrao.edu/repository/pypi-casa-release/simple",
           "https://github.com/dsa110/dsa110-calib/master#egg=dsa110-calib",
-          "https://github.com/AA-ALERT/psrdada-python/master#egg=psrdada",
           ],
       zip_safe=False)
 

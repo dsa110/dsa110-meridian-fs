@@ -8,9 +8,12 @@ by the DSA-110 correlator
 """
 
 import os
+import json
 from datetime import datetime
 import numpy as np
+import astropy.units as u
 import dsacalib.constants as ct
+from dsacalib.fringestopping import calc_uvw
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
 from antpos.utils import get_baselines
@@ -122,8 +125,8 @@ def integrate(data, nint):
     data = data.reshape(-1, nint, nbls, nchan, npol).mean(1)
     return data
 
-def load_visibility_model(fs_table, blen, nint, fobs, pt_dec,
-                          ant_delay_tbl=None):
+def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
+                          tsamp, ant_delay_tbl=None):
     """
     Load the visibility model for fringestopping.
 
@@ -151,6 +154,8 @@ def load_visibility_model(fs_table, blen, nint, fobs, pt_dec,
     try:
         fs_data = np.load(fs_table)
         assert fs_data['bw'].shape == (nint, blen.shape[0])
+        assert np.abs(fs_data['dec_rad']-pt_dec) < 1e-6
+        assert np.abs(fs_data['tsamp_s']-tsamp) < 1e-6
     except (FileNotFoundError, AssertionError):
         print('Creating new fringestopping table.')
         generate_fringestopping_table(blen, pt_dec, nint, tsamp,
@@ -163,7 +168,7 @@ def load_visibility_model(fs_table, blen, nint, fobs, pt_dec,
     vis_model = zenith_visibility_model(fobs, fs_table)
 
     if ant_delay_tbl is not None:
-        bl_delays = load_antenna_delays(ant_delay_tbl, len(antenna_order))
+        bl_delays = load_antenna_delays(ant_delay_tbl, nant)
         vis_model /= np.exp(2j*np.pi*
                             fobs[:, np.newaxis]*bl_delays[:, np.newaxis, :])
 
@@ -204,10 +209,9 @@ def load_antenna_delays(ant_delay_table, nant, npol=2):
 
     return bl_delays
 
-def antenna_positions(antenna_order, pt_dec, autocorrs=True, casa_order=False):
-    raise NotImplementedError
+def baseline_uvw(antenna_order, pt_dec, autocorrs=True, casa_order=False):
     """Calculates the antenna positions and baseline coordinates.
-    
+
     Parameters
     ----------
     antenna_order : list
@@ -220,7 +224,7 @@ def antenna_positions(antenna_order, pt_dec, autocorrs=True, casa_order=False):
     casa_order : bool
         Whether the baselines are organized in casa order (e.g. [1-1, 1-2, 1-3,
         2-2, 2-3, 3-3]) or the reverse. Defaults False.
-    
+
     Returns
     -------
     bname : list
@@ -230,16 +234,47 @@ def antenna_positions(antenna_order, pt_dec, autocorrs=True, casa_order=False):
     uvw : ndarray
         The uvw coordinates of the baselines for a phase reference at meridian.
         Dimensions (nbaselines, 3).
-    ant_itrf : ndarray
-        The ITRF coordinates of the antenna positions relative to the center of
-        the array.  Dimensions (nants, 3).
     """
-    df_bls = get_baselines(antenna_order, autocorrs, casa_order)
+    df_bls = get_baselines(antenna_order, autocorrs=autocorrs,
+                           casa_order=casa_order)
     bname = df_bls['bname']
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
     bu, bv, bw = calc_uvw(blen, 58849.0, 'HADEC', 0.*u.deg,
                           (pt_dec*u.rad).to(u.deg))
     uvw = np.array([bu, bv, bw]).T
-    # also need the itrf coordinates of the antennas
-    
-    return bname, blen, uvw, ant_itrf
+    return bname, blen, uvw
+
+def parse_param_file(param_file):
+    """Parses parameter file.
+
+    Parameters
+    ----------
+    param_file : str
+        The full path to the json parameter file.
+    """
+    fhand = open(param_file)
+    params = json.load(fhand)
+    fhand.close()
+    test = params['test']
+    key_string = params['key_string']
+    nant = params['nant']
+    nchan = params['nchan']
+    npol = params['npol']
+    fout = params['hdf5_fname']
+    samples_per_frame = params['samples_per_frame']
+    samples_per_frame_out = params['samples_per_frame_out']
+    nint = params['nint']
+    fs_table = params['fs_table']
+    antenna_order = params['antenna_order']
+    dfreq = params['bw_GHz']/nchan
+    fobs = params['f0_GHz']+dfreq/2+np.arange(nchan)*dfreq
+    if not params['chan_ascending']:
+        fobs = fobs[::-1]
+    pt_dec = params['pt_dec'] # in radians
+
+    assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
+        "Each frame out must contain an integer number of frames in."
+
+    return test, key_string, nant, nchan, npol, fobs, fout, \
+        samples_per_frame, samples_per_frame_out, nint, fs_table, \
+        antenna_order, pt_dec

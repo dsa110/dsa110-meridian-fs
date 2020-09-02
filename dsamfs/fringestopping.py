@@ -54,7 +54,8 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     bw = bw-bwref[:, np.newaxis]
     bw = bw.T
     bwref = bwref.T
-    np.savez(outname, dec=pt_dec, ha=hangle, bw=bw, bwref=bwref)
+    np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,
+             bwref=bwref)
 
 def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     """Creates the visibility model from the fringestopping table.
@@ -109,10 +110,13 @@ def fringestop_on_zenith(vis, vis_model, nans=False):
     vis = vis.reshape(-1, nint, nbl, nchan, npol)
     vis /= vis_model
     if nans:
+        nsamples = np.count_nonzero(~np.isnan(vis), axis=1)
         vis = np.nanmean(vis, axis=1)
+
     else:
         vis = np.mean(vis, axis=1)
-    return vis
+        nsamples = np.ones(vis.shape)*nint
+    return vis, nsamples
 
 def write_fs_delay_table(msname, source, blen, tobs, nant):
     """Writes the fringestopping delays to a delay calibration table.
