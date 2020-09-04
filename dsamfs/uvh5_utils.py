@@ -49,7 +49,7 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     # also need the itrf coordinates of the antennas
     df = get_itrf(height=ct.OVRO_ALT*u.m, latlon_center=(ct.OVRO_LAT*u.rad,
                                                          ct.OVRO_LON*u.rad))
-    ant_itrf = np.array([df['x_m'], df['y_m'], df['z_m']]).T
+    ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
     nants_telescope = max(df.index)
     # have to have some way of calculating the ant_1_array and
     # ant_2_array order and uvw array.  The uvw array should be constant but
