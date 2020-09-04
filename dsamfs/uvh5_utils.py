@@ -7,12 +7,18 @@ Routines to interact w/ hdf5 files used for the 24-hr visibility buffer
 """
 from datetime import datetime
 import numpy as np
+import traceback
 import h5py
 from dsacalib import constants as ct
 from antpos.utils import get_itrf
 import astropy.units as u
 import dsamfs.psrdada_utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
+import dsautils.dsa_syslog as dsl
+
+logger = dsl.DsaSyslogger()
+logger.subsystem("software")
+logger.app("dsacalib")
 
 def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
                          fs_table=None):
@@ -215,9 +221,16 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
             for i in range(data_in.shape[0]):
                 try:
                     assert reader.isConnected
-                    data_in[i, ...] = pu.read_buffer(reader, nbls, nchan, npol)
-                except (AssertionError, ValueError):
+                    #print(data_in.shape)
+                    #print(nbls, nchan, npol)
+                    temp_data = pu.read_buffer(reader, nbls, nchan, npol)
+                    #print('Buffer shape {0}:'.format(temp_data.shape))
+                    data_in[i, ...] = temp_data #pu.read_buffer(reader, nbls, nchan, npol)
+                except (AssertionError, ValueError) as e:
                     print('Last integration has {0} timesamples'.format(i))
+                    logger.info('Disconnected from buffer with message {0}:\n{1}'.
+                                format(type(e).__name__, ''.join(
+                                    traceback.format_tb(e.__traceback__))))
                     nans = True
                     break
 

@@ -19,13 +19,6 @@ logger = dsl.DsaSyslogger()
 logger.subsystem("software")
 logger.app("dsamfs")
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        PARAM_FILE = sys.argv[1]
-    else:
-        PARAM_FILE = None
-    run_fringestopping(PARAM_FILE)
-
 def run_fringestopping(param_file, header_file=None, outdir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
@@ -38,7 +31,7 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
         param_file = '{0}/meridian_fringestopping_parameters.json'.format(
             dsamfs.__path__[0])
     test, key_string, nant, nchan, npol, fobs, fout, samples_per_frame, \
-        samples_per_frame_out, nint, fs_table, antenna_order, pt_dec = \
+        samples_per_frame_out, nint, fs_table, antenna_order, pt_dec, tsamp = \
         pu.parse_param_file(param_file)
     if outdir is not None:
         fout = '{0}/{1}'.format(outdir, fout)
@@ -79,7 +72,7 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
     # tstart, tsamp = pu.read_header(reader)
     # tstart += nint*tsamp/2
     tstart = 58871.66878472222*ct.SECONDS_PER_DAY
-    tsamp = 0.134217728
+    #tsamp = 0.134217728
     tstart += nint*tsamp/2
     t0 = int(tstart)
     tstart -= t0
@@ -110,3 +103,16 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
 
     logger.info("Disconnected from psrdada buffer {0} and closed file "
                 "{1}.hdf5".format(key_string, fout))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        PARAM_FILE = sys.argv[1]
+        if len(sys.argv) > 2:
+            outdir = sys.argv[2]
+        else:
+            outdir = None
+    else:
+        PARAM_FILE = None
+    run_fringestopping(PARAM_FILE, outdir=outdir)
+

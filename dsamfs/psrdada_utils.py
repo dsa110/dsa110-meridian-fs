@@ -266,15 +266,18 @@ def parse_param_file(param_file):
     nint = params['nint']
     fs_table = params['fs_table']
     antenna_order = params['antenna_order']
+    if antenna_order is False:
+        antenna_order = np.arange(nant)+1
     dfreq = params['bw_GHz']/nchan
     fobs = params['f0_GHz']+dfreq/2+np.arange(nchan)*dfreq
     if not params['chan_ascending']:
         fobs = fobs[::-1]
     pt_dec = params['pt_dec'] # in radians
+    tsamp = params['tsamp'] # in seconds
 
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
     return test, key_string, nant, nchan, npol, fobs, fout, \
         samples_per_frame, samples_per_frame_out, nint, fs_table, \
-        antenna_order, pt_dec
+        antenna_order, pt_dec, tsamp
