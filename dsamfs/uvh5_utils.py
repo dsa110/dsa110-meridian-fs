@@ -203,9 +203,10 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
         nt*nbls, 1, nchan, npol)
 
 def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
-                 sample_rate_out, pt_dec, antenna_order, fs_table, tstart,
+                 sample_rate_out, pt_dec, antenna_order, fs_table,
                  tsamp, bname, uvw, fobs, vis_model):
-    """Reads dada buffer and writes to uvh5 file.
+    """
+    Reads dada buffer and writes to uvh5 file.
     """
     print('Opening output file {0}.hdf5'.format(fout))
     with h5py.File('{0}.hdf5'.format(fout), 'w') as fhdf5:
@@ -214,16 +215,14 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
 
         idx_frame_out = 0
         nans = False
+        tstart = pu.get_time()
+        tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY
         while not nans:
             data_in = np.ones((samples_per_frame_out*nint, nbls, nchan, npol),
                               dtype=np.complex64)*np.nan
             for i in range(data_in.shape[0]):
                 try:
                     assert reader.isConnected
-                    # print(data_in.shape)
-                    # print(nbls, nchan, npol)
-                    # temp_data = pu.read_buffer(reader, nbls, nchan, npol)
-                    # print('Buffer shape {0}:'.format(temp_data.shape))
                     data_in[i, ...] = pu.read_buffer(reader, nbls, nchan, npol)
                 except (AssertionError, ValueError) as e:
                     print('Last integration has {0} timesamples'.format(i))
@@ -234,10 +233,6 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
                     break
             data_in[data_in==data_in] = 1.
 
-            # obtain time from etcd if first sample
-            if idx_frame_out==0:
-                tstart = pu.get_time()
-            
             data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
             t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                        sample_rate_out)

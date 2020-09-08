@@ -8,6 +8,7 @@ sample, before integrating the data and writing it to a hdf5 file.
 """
 import sys
 import subprocess
+from datetime import datetime
 from psrdada import Reader
 import dsacalib.constants as ct
 import dsautils.dsa_syslog as dsl
@@ -27,17 +28,22 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
         The full path to the json parameter file. Defaults to the file
         meridian_fringestopping_parameters.py in the package directory.
     """
+    now = datetime.utcnow()
     if param_file is None:
         param_file = '{0}/meridian_fringestopping_parameters.json'.format(
             dsamfs.__path__[0])
-    test, key_string, nant, nchan, npol, fobs, fout, samples_per_frame, \
-        samples_per_frame_out, nint, fs_table, antenna_order, pt_dec, tsamp = \
+    test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
+        samples_per_frame_out, nint, antenna_order, pt_dec, tsamp = \
         pu.parse_param_file(param_file)
+    nbls = (nant*(nant+1))//2
+    key = int('0x{0}'.format(key_string), 16)
+
+    fs_table = 'fringestopping_table.npz'
+    fout = '{0}_{1:.4f}rad.uvh5'.format(now.strftime("%Y-%m-%dT%H:%M%S"),
+                                        pt_dec)
     if outdir is not None:
         fout = '{0}/{1}'.format(outdir, fout)
         fs_table = '{0}/{1}'.format(outdir, fs_table)
-    nbls = (nant*(nant+1))//2
-    key = int('0x{0}'.format(key_string), 16)
     bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, casa_order=True)
 
     logger.info("Started fringestopping of dada buffer {0} with {1} "
@@ -71,15 +77,15 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
     # Get the start time and the sample time from the reader
     # tstart, tsamp = pu.read_header(reader)
     # tstart += nint*tsamp/2
-    tstart = 58871.66878472222
-    #tsamp = 0.134217728
-    tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY
+    # tstart = 58871.66878472222
+    # tsamp = 0.134217728
+    # tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY
     sample_rate_out = 1/(tsamp*nint)
 
     vis_model = pu.load_visibility_model(fs_table, blen, nant, nint, fobs,
                                          pt_dec, tsamp)
     dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
-                 sample_rate_out, pt_dec, antenna_order, fs_table, tstart,
+                 sample_rate_out, pt_dec, antenna_order, fs_table,
                  tsamp, bname, uvw, fobs, vis_model)
 
     if test:
