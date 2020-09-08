@@ -19,6 +19,12 @@ from dsamfs.fringestopping import zenith_visibility_model
 from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
 import casatools as cc
+from dsautils import dsa_store
+
+def get_time():
+
+    d = dsa_store.DsaStore()
+    return d.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']+0.65536/86400.
 
 def read_header(reader):
     """
@@ -97,8 +103,8 @@ def update_time(tstart, samples_per_frame, sample_rate):
     tstart : float
           The start time of the next dataframe in seconds.
     """
-    t = tstart+np.arange(samples_per_frame)/sample_rate
-    tstart += samples_per_frame/sample_rate
+    t = tstart+np.arange(samples_per_frame)/sample_rate/ct.SECONDS_PER_DAY
+    tstart += samples_per_frame/sample_rate/ct.SECONDS_PER_DAY
     return t, tstart
 
 def integrate(data, nint):
@@ -269,9 +275,10 @@ def parse_param_file(param_file):
     if antenna_order is False:
         antenna_order = np.arange(nant)+1
     dfreq = params['bw_GHz']/nchan
-    fobs = params['f0_GHz']+dfreq/2+np.arange(nchan)*dfreq
-    if not params['chan_ascending']:
-        fobs = fobs[::-1]
+    if params['chan_ascending']:
+        fobs = params['f0_GHz']+np.arange(nchan)*dfreq
+    else:
+        fobs = params['f0_GHz']-np.arange(nchan)*dfreq
     pt_dec = params['pt_dec'] # in radians
     tsamp = params['tsamp'] # in seconds
 

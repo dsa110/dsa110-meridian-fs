@@ -38,7 +38,7 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
         fs_table = '{0}/{1}'.format(outdir, fs_table)
     nbls = (nant*(nant+1))//2
     key = int('0x{0}'.format(key_string), 16)
-    bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec)
+    bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, casa_order=True)
 
     logger.info("Started fringestopping of dada buffer {0} with {1} "
                 "integrations and {2} baselines. Fringestopped data written "
@@ -71,11 +71,9 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
     # Get the start time and the sample time from the reader
     # tstart, tsamp = pu.read_header(reader)
     # tstart += nint*tsamp/2
-    tstart = 58871.66878472222*ct.SECONDS_PER_DAY
+    tstart = 58871.66878472222
     #tsamp = 0.134217728
-    tstart += nint*tsamp/2
-    t0 = int(tstart)
-    tstart -= t0
+    tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY
     sample_rate_out = 1/(tsamp*nint)
 
     vis_model = pu.load_visibility_model(fs_table, blen, nant, nint, fobs,

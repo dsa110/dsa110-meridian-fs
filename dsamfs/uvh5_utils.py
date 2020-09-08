@@ -62,8 +62,8 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     header["latitude"] = (ct.OVRO_LAT*u.rad).to_value(u.deg)
     header["longitude"] = (ct.OVRO_LON*u.rad).to_value(u.deg)
     header["altitude"] = ct.OVRO_ALT
-    header["telescope_name"] = np.string_("OVRO_DSA")
-    header["instrument"] = np.string_("OVRO_DSA")
+    header["telescope_name"] = np.string_("OVRO_MMA")
+    header["instrument"] = np.string_("DSA")
     header["object_name"] = np.string_("search")
     header["history"] = np.string_("written by dsa110-meridian-fringestopping "
                                    "on {0}".format(datetime.now().strftime(
@@ -94,10 +94,10 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
         "uvw_array", (0, 3), maxshape=(None, 3), dtype=np.float32,
         chunks=True, data=None)
     header.create_dataset(
-        "time_array", (0, ), maxshape=(None, ), dtype=np.float32,
+        "time_array", (0, ), maxshape=(None, ), dtype=np.float64,
         chunks=True, data=None)
     header.create_dataset(
-        "integration_time", (0, ), maxshape=(None, ), dtype=np.float32,
+        "integration_time", (0, ), maxshape=(None, ), dtype=np.float64,
         chunks=True, data=None)
     header["freq_array"] = fobs[np.newaxis, :]*1e9
     header["channel_width"] = np.median(np.diff(fobs))*1e9
@@ -162,7 +162,6 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
     assert data.shape == nsamples.shape
     assert uvw.shape[1] == nbls
     assert uvw.shape[2] == 3
-
     antenna_order = fhdf5["Header"]["antenna_names"][:]
     ant_1_array = np.array(
         [np.where(antenna_order == np.string_(bn.split('-')[0]))
@@ -221,11 +220,11 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
             for i in range(data_in.shape[0]):
                 try:
                     assert reader.isConnected
-                    #print(data_in.shape)
-                    #print(nbls, nchan, npol)
-                    temp_data = pu.read_buffer(reader, nbls, nchan, npol)
-                    #print('Buffer shape {0}:'.format(temp_data.shape))
-                    data_in[i, ...] = temp_data #pu.read_buffer(reader, nbls, nchan, npol)
+                    # print(data_in.shape)
+                    # print(nbls, nchan, npol)
+                    # temp_data = pu.read_buffer(reader, nbls, nchan, npol)
+                    # print('Buffer shape {0}:'.format(temp_data.shape))
+                    data_in[i, ...] = pu.read_buffer(reader, nbls, nchan, npol)
                 except (AssertionError, ValueError) as e:
                     print('Last integration has {0} timesamples'.format(i))
                     logger.info('Disconnected from buffer with message {0}:\n{1}'.
@@ -233,7 +232,12 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
                                     traceback.format_tb(e.__traceback__))))
                     nans = True
                     break
+            data_in[data_in==data_in] = 1.
 
+            # obtain time from etcd if first sample
+            if idx_frame_out==0:
+                tstart = pu.get_time()
+            
             data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
             t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                        sample_rate_out)
