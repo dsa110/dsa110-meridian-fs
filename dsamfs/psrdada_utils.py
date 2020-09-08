@@ -274,7 +274,7 @@ def parse_param_file(param_file):
     samples_per_frame_out = params['samples_per_frame_out']
     nint = params['nint']
     ant_od = OrderedDict(sorted(params['antenna_order'].items()))
-    antenna_order = ant_od.values()
+    antenna_order = list(ant_od.values())
     dfreq = params['bw_GHz']/nchan
     if params['chan_ascending']:
         fobs = params['f0_GHz']+np.arange(nchan)*dfreq

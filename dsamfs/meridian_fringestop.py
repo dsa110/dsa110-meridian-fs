@@ -39,7 +39,7 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
     key = int('0x{0}'.format(key_string), 16)
 
     fs_table = 'fringestopping_table.npz'
-    fout = '{0}_{1:.4f}rad.uvh5'.format(now.strftime("%Y-%m-%dT%H:%M%S"),
+    fout = '{0}_{1:.4f}rad'.format(now.strftime("%Y-%m-%dT%H:%M:%S"),
                                         pt_dec)
     if outdir is not None:
         fout = '{0}/{1}'.format(outdir, fout)
