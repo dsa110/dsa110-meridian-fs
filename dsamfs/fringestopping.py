@@ -14,6 +14,86 @@ import astropy.units as u
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
 
+def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
+    """Calculates uvw coordinates.
+
+    Uses CASA to calculate the u,v,w coordinates of the baselines `b` towards a
+    source or phase center (specified by `src_epoch`, `src_lon` and `src_lat`)
+    at the specified time and observatory.
+
+    Parameters
+    ----------
+    blen : ndarray
+        The ITRF coordinates of the baselines.  Type float, shape (nblt,
+        3), units of meters.
+    tobs : ndarray
+        An array of floats, the times in MJD for which to calculate the uvw
+        coordinates, shape (nblt).
+    src_epoch : str
+        The epoch of the source or phase-center, as a CASA-recognized string
+        e.g. ``'J2000'`` or ``'HADEC'``
+    src_lon : astropy quantity
+        The longitude of the source or phase-center, in degrees or an
+        equivalent unit.
+    src_lat : astropy quantity
+        The latitude of the source or phase-center, in degrees or an equivalent
+        unit.
+
+    Returns
+    -------
+    bu : ndarray
+        The u-value for each time and baseline, in meters. Shape is
+        ``(len(b), len(tobs))``.
+    bv : ndarray
+        The v-value for each time and baseline, in meters. Shape is
+        ``(len(b), len(tobs))``.
+    bw : ndarray
+        The w-value for each time and baseline, in meters. Shape is
+        ``(len(b), len(tobs))``.
+    """
+    nblt = tobs.shape[0]
+    buvw = np.zeros((nblt, 3))
+    # Define the reference frame
+    me = cc.measures()
+    qa = cc.quanta()
+    if obs is not None:
+        me.doframe(me.observatory(obs))
+    if not isinstance(src_lon.ndim, float) and src_lon.ndim > 0:
+        assert src_lon.ndim == 1
+        assert src_lon.shape[0] == nblt
+        assert src_lat.shape[0] == nblt
+        direction_set = False
+    else:
+        if (src_epoch == 'HADEC') and (nblt > 1):
+            raise TypeError('HA and DEC must be specified at each baseline-time in '
+                           'tobs.')
+        me.doframe(me.direction(src_epoch,
+                                qa.quantity(src_lon.to_value(u.deg), 'deg'),
+                                qa.quantity(src_lat.to_value(u.deg), 'deg')))
+        direction_set = True
+    contains_nans = False
+    for i in range(nblt):
+         me.doframe(me.epoch('UTC', qa.quantity(tobs[i], 'd')))
+         if not direction_set:
+             me.doframe(me.direction(src_epoch,
+                                     qa.quantity(src_lon[i].to_value(u.deg),
+                                                 'deg'),
+                                     qa.quantity(src_lat[i].to_value(u.deg),
+                                                 'deg')))
+         bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
+                           qa.quantity(blen[i, 1], 'm'),
+                           qa.quantity(blen[i, 2], 'm'))
+          # Get the uvw coordinates
+         try:
+             buvw[i, :] = me.touvw(bl)[1]['value']
+         except KeyError:
+             contains_nans = True
+             buvw[i, :] = np.ones(3)*np.nan
+    if contains_nans:
+        print('Warning: some solutions not found for u, v, w coordinates')
+    return buvw
+
+
 def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
                                   outname='fringestopping_table',
                                   mjd0=58849.0):
