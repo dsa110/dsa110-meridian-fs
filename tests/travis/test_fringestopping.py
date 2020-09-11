@@ -59,5 +59,3 @@ def test_calc_uvw(tmpdir):
     assert np.all(np.abs(uvw_blt[:, 0]-uu.T.flatten()) < 1e-6)
     assert np.all(np.abs(uvw_blt[:, 1]-vv.T.flatten()) < 1e-6)
     assert np.all(np.abs(uvw_blt[:, 2]-ww.T.flatten()) < 1e-6)
-                                          
-    

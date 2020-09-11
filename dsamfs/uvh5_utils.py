@@ -220,8 +220,6 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
 
         idx_frame_out = 0
         nans = False
-        tstart = pu.get_time()
-        tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY + 2400000.5
         while not nans:
             data_in = np.ones((samples_per_frame_out*nint, nbls, nchan, npol),
                               dtype=np.complex64)*np.nan
@@ -237,6 +235,10 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
                     nans = True
                     break
 
+            if idx_frame_out == 0:
+                tstart = pu.get_time()
+                tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY+2400000.5
+
             data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
             t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                        sample_rate_out)
@@ -247,7 +249,7 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
 
         reader.disconnect()
 
-def uvh5_to_uvfits(fname, ra=None, dec=None, dt=None):
+def uvh5_to_uvfits(fname, ra=None, dec=None, dt=None, antenna_list=None):
     """
     Converts a uvh5 data to a uvfits file.
     
@@ -265,7 +267,10 @@ def uvh5_to_uvfits(fname, ra=None, dec=None, dt=None):
         Duration of data to extract. If None, will extract the entire file.
     """
     UV = UVData()
-    UV.read(fname, file_type='uvh5')
+    if antenna_list is not None:
+        UV.read(fname, file_type='uvh5', antenna_names=antenna_list)
+    else:
+        UV.read(fname, file_type='uvh5')
     time = Time(UV.time_array, format='jd')
     pt_dec = UV.extra_keywords['phase_center_dec']*u.rad
 
@@ -288,18 +293,22 @@ def uvh5_to_uvfits(fname, ra=None, dec=None, dt=None):
     lamb = c.c/(UV.freq_array*u.Hz)
     # Get the baselines in itrf coordinates
     ant1, ant2 = UV.baseline_to_antnums(UV.baseline_array)
-    antenna_order = [int(UV.antenna_names[np.where(UV.antenna_numbers==ant1[abi])[0][0]]) for
-                                          abi in get_autobl_indices(UV.Nants_data, casa=False)]
+    antenna_order = [int(UV.antenna_names[np.where(
+        UV.antenna_numbers==ant1[abi])[0][0]]) for abi in
+                     get_autobl_indices(UV.Nants_data, casa=False)]
     df = get_baselines(antenna_order, casa_order=False, autocorrs=True)
-    ant1_names = np.array(UV.antenna_names)[UV.antenna_numbers[UV.ant_1_array]]
-    ant2_names = np.array(UV.antenna_names)[UV.antenna_numbers[UV.ant_2_array]]
-    bnames = ['{0}-{1}'.format(ant1_names[i], ant2_names[i]) for i in range(len(ant1_names))]
-    idx = [np.where(df['bname']==bn)[0][0] for bn in bnames]
-    blen = np.array([df['x_m'][idx], df['y_m'][idx], df['z_m'][idx]]).T
+    #ant1_names = np.array(UV.antenna_names)[UV.antenna_numbers[UV.ant_1_array]]
+    #ant2_names = np.array(UV.antenna_names)[UV.antenna_numbers[UV.ant_2_array]]
+    #bnames = ['{0}-{1}'.format(ant1_names[i], ant2_names[i]) for i in range(len(ant1_names))]
+    #idx = [np.where(df['bname']==bn)[0][0] for bn in bnames]
+    blen = np.array([df['x_m'], df['y_m'], df['z_m']]).T
+    blen = np.tile(blen[np.newaxis, ...], (UV.Ntimes, 1, 1)).reshape(-1, 3)
     # UVW coordinates for drift scan
-    uvwd = calc_uvw_blt(blen, time.mjd, 'HADEC', np.zeros(UV.Nblts)*u.rad, np.ones(UV.Nblts)*pt_dec)
+    # This is too slow currently
+    uvwd = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
+                        np.zeros(UV.Nbls)*u.rad, np.zeros(UV.Nbls)*pt_dec)
     uvwp = calc_uvw_blt(blen, time.mjd, 'J2000', ra, dec)
-    dw = (uvwp[:, -1] - uvwd[:, -1])*u.m
+    dw = (uvwp[:, -1].reshape(UV.Ntimes, UV.Nbls) - uvwd[np.newaxis, :, -1]).flatten()*u.m
     # Not sure about sign - double check
     phase_model = np.exp((2*np.pi/lamb*-1*dw[:, np.newaxis, np.newaxis]).to_value(
         u.dimensionless_unscaled))
