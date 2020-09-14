@@ -4,7 +4,7 @@ from dsacalib.utils import get_autobl_indices
 from pyuvdata import UVData
 import glob
 import numpy as np
-from dsamfs.uvh5_utils import uvh5_to_uvfits
+from dsamfs.uvh5_utils import uvh5_to_ms
 from casatasks import importuvfits
 import casatools as cc
 import os
@@ -34,16 +34,16 @@ def test_end2end(tmpdir):
     print(type(UV.time_array))
     print(UV.time_array.dtype)
     # Check that we can convert to uvfits
-    uvh5_to_uvfits(fname)
+    uvh5_to_ms(fname, fname.replace('.hdf5', ''))
     assert os.path.exists(fname.replace('hdf5', 'fits'))
     # Check that we can read in the uvfits file
-    importuvfits(fname.replace('hdf5', 'fits'), fname.replace('hdf5', 'ms'))
     assert os.path.exists(fname.replace('hdf5', 'ms'))
     ms = cc.ms()
     status = ms.open(fname.replace('hdf5', 'ms'))
     assert status
+    uvw_ms = ms.getdata('uvw')['uvw']
     ms.close()
-    # Check that the UVW coordinates are right
+    # Check that the UVW coordinates are right in the fits file
     f = pf.open(fname.replace('hdf5', 'fits'))
     uu = (f['PRIMARY'].data['UU']*u.s*c.c).to_value(u.m)
     vv = (f['PRIMARY'].data['VV']*u.s*c.c).to_value(u.m)
@@ -70,5 +70,7 @@ def test_end2end(tmpdir):
     assert np.all(np.abs(uvw[:, 0] - uu) < 1e-4)
     assert np.all(np.abs(uvw[:, 1] - vv) < 1e-4)
     assert np.all(np.abs(uvw[:, 2] - ww) < 1e-4)
-
-    
+    assert np.all(np.abs(uvw-uvw_ms.T) < 1e-4)
+    UV = UVData()
+    UV.read(fname.replace('hdf5', 'ms'), file_type='ms')
+    assert np.all(np.abs(UV.antenna_diameters-4.65) < 1e-4)

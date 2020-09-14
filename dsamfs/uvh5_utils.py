@@ -6,19 +6,29 @@ Dana Simard, dana.simard@astro.caltech.edu, 02/2020
 Routines to interact w/ hdf5 files used for the 24-hr visibility buffer
 """
 from datetime import datetime
-import numpy as np
+import os
+import shutil
 import traceback
+import numpy as np
 import h5py
-from dsacalib import constants as ct
-from antpos.utils import get_itrf, get_baselines
-import astropy.units as u
-import dsamfs.psrdada_utils as pu
-from dsamfs.fringestopping import fringestop_on_zenith, calc_uvw_blt
-import dsautils.dsa_syslog as dsl
+import scipy # pylint: disable=unused-import
+from casatasks import importuvfits
+import casatools as cc
 from pyuvdata import UVData
-from astropy.time import Time
+from antpos.utils import get_itrf, get_baselines
+import dsautils.dsa_syslog as dsl
 import astropy.constants as c
 from dsacalib.utils import get_autobl_indices
+from dsacalib import constants as ct
+from dsacalib.fringestopping import amplitude_sky_model
+import dsacalib.utils as du
+import dsamfs.psrdada_utils as pu
+from dsamfs.fringestopping import fringestop_on_zenith, calc_uvw_blt
+import astropy.units as u
+from astropy.utils import iers
+iers.conf.iers_auto_url_mirror = ct.IERS_TABLE
+iers.conf.auto_max_age = None
+from astropy.time import Time # pylint: disable=wrong-import-position
 
 logger = dsl.DsaSyslogger()
 logger.subsystem("software")
@@ -75,6 +85,7 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     header["phase_type"] = np.string_("drift")
     header["Nants_data"] = len(antenna_order)
     header["Nants_telescope"] = nants_telescope
+    header["antenna_diameters"] = np.ones(nants_telescope)*4.65
     # ant_1_array and ant_2_array have ot be updated
     header.create_dataset(
         "ant_1_array", (0, ), maxshape=(None, ), dtype=np.int,
@@ -104,7 +115,7 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
         "integration_time", (0, ), maxshape=(None, ), dtype=np.float64,
         chunks=True, data=None)
     header["freq_array"] = fobs[np.newaxis, :]*1e9
-    header["channel_width"] = np.median(np.diff(fobs))*1e9
+    header["channel_width"] = np.abs(np.median(np.diff(fobs))*1e9)
     header["spw_array"] = np.array([1])
     # Polarization array is defined at the top of page 8 of
     # AIPS memo 117:
@@ -229,7 +240,8 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
                     data_in[i, ...] = pu.read_buffer(reader, nbls, nchan, npol)
                 except (AssertionError, ValueError) as e:
                     print('Last integration has {0} timesamples'.format(i))
-                    logger.info('Disconnected from buffer with message {0}:\n{1}'.
+                    logger.info('Disconnected from buffer with message'
+                                '{0}:\n{1}'.
                                 format(type(e).__name__, ''.join(
                                     traceback.format_tb(e.__traceback__))))
                     nans = True
@@ -249,10 +261,11 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
 
         reader.disconnect()
 
-def uvh5_to_uvfits(fname, ra=None, dec=None, dt=None, antenna_list=None):
+def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
+               flux=None):
     """
     Converts a uvh5 data to a uvfits file.
-    
+
     Parameters
     ----------
     fname : str
@@ -266,6 +279,7 @@ def uvh5_to_uvfits(fname, ra=None, dec=None, dt=None, antenna_list=None):
     dt : astropy quantity
         Duration of data to extract. If None, will extract the entire file.
     """
+    zenith_dec = 0.6503903199825691*u.rad
     UV = UVData()
     if antenna_list is not None:
         UV.read(fname, file_type='uvh5', antenna_names=antenna_list)
@@ -280,43 +294,75 @@ def uvh5_to_uvfits(fname, ra=None, dec=None, dt=None, antenna_list=None):
         dec = pt_dec
     # Extract only the times that we are interested in
     if dt is not None:
-        lst_min = (ra - (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2).to_value(u.rad)%(2*np.pi)
-        lst_max = (ra + (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2).to_value(u.rad)%(2*np.pi)
+        lst_min = (ra - (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2
+                  ).to_value(u.rad)%(2*np.pi)
+        lst_max = (ra + (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2
+                  ).to_value(u.rad)%(2*np.pi)
         if lst_min < lst_max:
-            idx_to_extract = np.where(UV.lst_array >= lst_min and UV.lst_array <= lst_max)
+            idx_to_extract = np.where((UV.lst_array >= lst_min) &
+                                      (UV.lst_array <= lst_max))[0]
         else:
-            idx_to_extract = np.where(UV.lst_array >= lst_min or UV.lst_array <= lst_max )
+            idx_to_extract = np.where((UV.lst_array >= lst_min) |
+                                      (UV.lst_array <= lst_max))[0]
         tmin = time[min(idx_to_extract)]
         tmax = time[max(idx_to_extract)]
         UV.read(fname, file_type='uvh5', time_range=[tmin.jd, tmax.jd])
         time = Time(UV.time_array, format='jd')
     lamb = c.c/(UV.freq_array*u.Hz)
     # Get the baselines in itrf coordinates
-    ant1, ant2 = UV.baseline_to_antnums(UV.baseline_array)
+    ant1, _ant2 = UV.baseline_to_antnums(UV.baseline_array)
     antenna_order = [int(UV.antenna_names[np.where(
         UV.antenna_numbers==ant1[abi])[0][0]]) for abi in
                      get_autobl_indices(UV.Nants_data, casa=False)]
     df = get_baselines(antenna_order, casa_order=False, autocorrs=True)
-    #ant1_names = np.array(UV.antenna_names)[UV.antenna_numbers[UV.ant_1_array]]
-    #ant2_names = np.array(UV.antenna_names)[UV.antenna_numbers[UV.ant_2_array]]
-    #bnames = ['{0}-{1}'.format(ant1_names[i], ant2_names[i]) for i in range(len(ant1_names))]
-    #idx = [np.where(df['bname']==bn)[0][0] for bn in bnames]
+    df_itrf = get_itrf()
     blen = np.array([df['x_m'], df['y_m'], df['z_m']]).T
     blen = np.tile(blen[np.newaxis, ...], (UV.Ntimes, 1, 1)).reshape(-1, 3)
-    # UVW coordinates for drift scan
-    # This is too slow currently
-    uvwd = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
-                        np.zeros(UV.Nbls)*u.rad, np.zeros(UV.Nbls)*pt_dec)
-    uvwp = calc_uvw_blt(blen, time.mjd, 'J2000', ra, dec)
-    dw = (uvwp[:, -1].reshape(UV.Ntimes, UV.Nbls) - uvwd[np.newaxis, :, -1]).flatten()*u.m
+    uvw_m = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
+                         np.zeros(UV.Nbls)*u.rad, np.ones(UV.Nbls)*pt_dec)
+    uvw_z = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
+                         np.zeros(UV.Nbls)*u.rad, np.ones(UV.Nbls)*zenith_dec)
+    dw = (uvw_z[:, -1] - uvw_m[:, -1])*u.m
     # Not sure about sign - double check
-    phase_model = np.exp((2*np.pi/lamb*-1*dw[:, np.newaxis, np.newaxis]).to_value(
-        u.dimensionless_unscaled))
-    UVout = UV.copy()
-    UVout.uvw_array = -1*uvwp # Miriad convention
-    UVout.data_array = UV.data_array/phase_model[..., np.newaxis]
-    UVout.phase_type = 'phased'
-    UVout.phase_center_ra = ra.to_value(u.rad)
-    UVout.phase_center_dec = dec.to_value(u.rad)
-    UVout.phase_center_epoch = 2000.
-    UVout.write_uvfits('{0}fits'.format(fname.strip('hdf5')), spoof_nonessential=True)
+    phase_model = np.exp((2j*np.pi/lamb*dw[:, np.newaxis, np.newaxis])
+                         .to_value(u.dimensionless_unscaled))
+    UV.uvw_array = -1*np.tile(uvw_z[np.newaxis, :, :], (UV.Ntimes, 1, 1)
+                       ).reshape(-1, 3)
+    UV.data_array = (UV.data_array.reshape(UV.Ntimes, UV.Nbls, UV.Nspws,
+                                           UV.Nfreqs, UV.Npols)
+                     *phase_model[np.newaxis, ..., np.newaxis]).reshape(
+        UV.Nblts, UV.Nspws, UV.Nfreqs, UV.Npols)
+    UV.antenna_positions = np.array([df_itrf['x_m'], df_itrf['y_m'],
+                                     df_itrf['z_m']]).T-UV.telescope_location
+    UV.phase(ra.to_value(u.rad), dec.to_value(u.rad), use_ant_pos=True)
+    UV.channel_width = np.abs(UV.channel_width)
+    if os.path.exists('{0}.fits'.format(msname)):
+        os.remove('{0}.fits'.format(msname))
+    UV.write_uvfits('{0}.fits'.format(msname),
+                    spoof_nonessential=True)
+    # Get the model to write to the data
+    if flux is not None:
+        fobs = UV.freq_array.squeeze()
+        lst = UV.lst_array
+        model = amplitude_sky_model(du.src('cal', ra, dec, flux),
+                                    lst, pt_dec, fobs).T
+        model = np.tile(model, (2, 1, 1))
+    else:
+        model = np.ones((2, UV.Nfreqs, UV.Nblts))
+
+    if os.path.exists('{0}.ms'.format(msname)):
+        shutil.rmtree('{0}.ms'.format(msname))
+    importuvfits('{0}.fits'.format(msname),
+                 '{0}.ms'.format(msname))
+    tb = cc.table()
+    tb.open('{0}.ms/ANTENNA'.format(msname), nomodify=False)
+    tb.putcol('POSITION',
+              np.array([df_itrf['x_m'], df_itrf['y_m'], df_itrf['z_m']]))
+    tb.close()
+
+    ms = cc.ms()
+    ms.open('{0}.ms'.format(msname), nomodify=False)
+    rec = ms.getdata(["model_data"])
+    rec['model_data'] = model
+    ms.putdata(rec)
+    ms.close()
