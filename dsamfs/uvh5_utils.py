@@ -14,6 +14,7 @@ import h5py
 import scipy # pylint: disable=unused-import
 from casatasks import importuvfits
 import casatools as cc
+from casacore.tables import table
 from pyuvdata import UVData
 from antpos.utils import get_itrf, get_baselines
 import dsautils.dsa_syslog as dsl
@@ -281,19 +282,23 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
     """
     zenith_dec = 0.6503903199825691*u.rad
     UV = UVData()
-    if antenna_list is not None:
-        UV.read(fname, file_type='uvh5', antenna_names=antenna_list)
-    else:
-        UV.read(fname, file_type='uvh5')
-    time = Time(UV.time_array, format='jd')
-    pt_dec = UV.extra_keywords['phase_center_dec']*u.rad
-
-    if ra is None:
-        ra = UV.lst_array[UV.Nblts//2]*u.rad
-    if dec is None:
-        dec = pt_dec
-    # Extract only the times that we are interested in
     if dt is not None:
+        if isinstance(fname, list):
+            fname_init = fname[0]
+        else:
+            fname_init = fname
+        if antenna_list is not None:
+            UV.read(fname_init, file_type='uvh5', antenna_names=antenna_list)
+        else:
+            UV.read(fname_init, file_type='uvh5')
+        time = Time(UV.time_array, format='jd')
+
+        pt_dec = UV.extra_keywords['phase_center_dec']*u.rad
+        if ra is None:
+            ra = UV.lst_array[UV.Nblts//2]*u.rad
+        if dec is None:
+            dec = pt_dec
+
         lst_min = (ra - (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2
                   ).to_value(u.rad)%(2*np.pi)
         lst_max = (ra + (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2
@@ -306,8 +311,26 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
                                       (UV.lst_array <= lst_max))[0]
         tmin = time[min(idx_to_extract)]
         tmax = time[max(idx_to_extract)]
-        UV.read(fname, file_type='uvh5', time_range=[tmin.jd, tmax.jd])
+        UV = UVData()
+        if antenna_list is not None:
+            UV.read(fname, file_type='uvh5', antenna_names=antenna_list,
+                    time_range=[tmin.jd, tmax.jd])
+        else:
+            UV.read(fname, file_type='uvh5', time_range=[tmin.jd, tmax.jd])
         time = Time(UV.time_array, format='jd')
+    else:
+        if antenna_list is not None:
+            UV.read(fname, file_type='uvh5', antenna_names=antenna_list)
+        else:
+            UV.read(fname, file_type='uvh5')
+        time = Time(UV.time_array, format='jd')
+
+        pt_dec = UV.extra_keywords['phase_center_dec']*u.rad
+        if ra is None:
+            ra = UV.lst_array[UV.Nblts//2]*u.rad
+        if dec is None:
+            dec = pt_dec
+
     lamb = c.c/(UV.freq_array*u.Hz)
     # Get the baselines in itrf coordinates
     ant1, _ant2 = UV.baseline_to_antnums(UV.baseline_array)
@@ -318,6 +341,8 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
     df_itrf = get_itrf()
     blen = np.array([df['x_m'], df['y_m'], df['z_m']]).T
     blen = np.tile(blen[np.newaxis, ...], (UV.Ntimes, 1, 1)).reshape(-1, 3)
+    UV.antenna_positions = np.array([df_itrf['x_m'], df_itrf['y_m'],
+                                     df_itrf['z_m']]).T-UV.telescope_location
     uvw_m = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
                          np.zeros(UV.Nbls)*u.rad, np.ones(UV.Nbls)*pt_dec)
     uvw_z = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
@@ -326,18 +351,65 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
     # Not sure about sign - double check
     phase_model = np.exp((2j*np.pi/lamb*dw[:, np.newaxis, np.newaxis])
                          .to_value(u.dimensionless_unscaled))
-    UV.uvw_array = -1*np.tile(uvw_z[np.newaxis, :, :], (UV.Ntimes, 1, 1)
+    UV.uvw_array = np.tile(uvw_z[np.newaxis, :, :], (UV.Ntimes, 1, 1)
                        ).reshape(-1, 3)
     UV.data_array = (UV.data_array.reshape(UV.Ntimes, UV.Nbls, UV.Nspws,
                                            UV.Nfreqs, UV.Npols)
-                     *phase_model[np.newaxis, ..., np.newaxis]).reshape(
+                     /phase_model[np.newaxis, ..., np.newaxis]).reshape(
         UV.Nblts, UV.Nspws, UV.Nfreqs, UV.Npols)
-    UV.antenna_positions = np.array([df_itrf['x_m'], df_itrf['y_m'],
-                                     df_itrf['z_m']]).T-UV.telescope_location
-    UV.phase(ra.to_value(u.rad), dec.to_value(u.rad), use_ant_pos=True)
-    UV.channel_width = np.abs(UV.channel_width)
+
+    UV.phase(ra.to_value(u.rad), dec.to_value(u.rad), use_ant_pos=False)
+    # Below is the manual calibration which can be used instead if needed.  
+    #uvw = calc_uvw_blt(blen, time.mjd, 'RADEC', ra.to(u.rad), dec.to(u.rad))
+    #dw = (uvw[:, -1] - np.tile(uvw_m[np.newaxis, :, -1], (UV.Ntimes, 1)
+    #                          ).reshape(-1))*u.m
+    #phase_model = np.exp((2j*np.pi/lamb*dw[:, np.newaxis, np.newaxis])
+    #                      .to_value(u.dimensionless_unscaled))
+    #UV.uvw_array = uvw
+    #UV.data_array = UV.data_array/phase_model[..., np.newaxis]
+    #UV.phase_type = 'phased'
+    #UV.phase_center_dec = dec.to_value(u.rad)
+    #UV.phase_center_ra = ra.to_value(u.rad)
+    #UV.phase_center_epoch = 2000.
+    # Look for missing channels
+    freq = UV.freq_array.squeeze()
+    # The channels may have been reordered by pyuvdata so check that the 
+    # parameter UV.channel_width makes sense now.
+    ascending = np.median(np.diff(freq)) > 0
+    if ascending:
+        assert np.all(np.diff(freq) > 0)
+        if UV.channel_width < 0:
+            UV.channel_width *= -1
+    else:
+        assert np.all(np.diff(freq) < 0)
+        if UV.channel_width > 0:
+            UV.channel_width *= -1
+    # Are there missing channels?
+    if not np.all(np.diff(freq)-UV.channel_width < 1e-5):
+        # There are missing channels!
+        nfreq = int(np.rint(np.abs(freq[-1]-freq[0])/UV.channel_width+1))
+        freq_out = freq[0] + np.arange(nfreq)*UV.channel_width
+        existing_idxs = np.rint((freq-freq[0])/UV.channel_width).astype(int)
+        data_out = np.zeros((UV.Nblts, UV.Nspws, nfreq, UV.Npols),
+                            dtype=UV.data_array.dtype)
+        nsample_out = np.zeros((UV.Nblts, UV.Nspws, nfreq, UV.Npols),
+                                dtype=UV.nsample_array.dtype)
+        flag_out = np.zeros((UV.Nblts, UV.Nspws, nfreq, UV.Npols),
+                             dtype=UV.flag_array.dtype)
+        # Ah, fancy indexing, be careful with numpy reshaping bugs!
+        data_out[:, :, existing_idxs, :] = UV.data_array
+        nsample_out[:, :, existing_idxs, :] = UV.nsample_array
+        flag_out[:, :, existing_idxs, :] = UV.flag_array
+        # Now write everything
+        UV.Nfreqs = nfreq
+        UV.freq_array = freq_out[np.newaxis, :]
+        UV.data_array = data_out
+        UV.nsample_array = nsample_out
+        UV.flag_array = flag_out
+    
     if os.path.exists('{0}.fits'.format(msname)):
         os.remove('{0}.fits'.format(msname))
+        
     UV.write_uvfits('{0}.fits'.format(msname),
                     spoof_nonessential=True)
     # Get the model to write to the data
@@ -354,12 +426,14 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
         shutil.rmtree('{0}.ms'.format(msname))
     importuvfits('{0}.fits'.format(msname),
                  '{0}.ms'.format(msname))
-    tb = cc.table()
-    tb.open('{0}.ms/ANTENNA'.format(msname), nomodify=False)
-    tb.putcol('POSITION',
-              np.array([df_itrf['x_m'], df_itrf['y_m'], df_itrf['z_m']]))
-    tb.close()
+    
+    # Changes these to use casacore instead
+    with table('{0}.ms/ANTENNA'.format(msname), readonly=False) as tb:
+        tb.putcol('POSITION',
+              np.array([df_itrf['x_m'], df_itrf['y_m'], df_itrf['z_m']]).T)
 
+#     with table('{0}.ms'.format(msname), readonly=False) as tb:
+#         tb.putcol('MODEL_DATA', model)
     ms = cc.ms()
     ms.open('{0}.ms'.format(msname), nomodify=False)
     rec = ms.getdata(["model_data"])

@@ -28,7 +28,6 @@ setup(name='dsa110-meridian-fs',
                         'dsa110-antpos',
                         'dsa110-pyutils',
                         'dsa110-calib',
-                        'psrdada',
                         'pyuvdata'
                         ],
       dependency_links=[
