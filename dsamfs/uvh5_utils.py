@@ -219,12 +219,17 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
     fhdf5["Data"]["nsamples"][old_size:, ...] = nsamples.reshape(
         nt*nbls, 1, nchan, npol)
 
-def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
+def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, nfreq_int, samples_per_frame_out,
                  sample_rate_out, pt_dec, antenna_order, fs_table,
                  tsamp, bname, uvw, fobs, vis_model):
     """
     Reads dada buffer and writes to uvh5 file.
     """
+    if nfreq_int > 1:
+        assert nchan%nfreq_int == 0, ("Number of channels must be an integer "
+                                      "number of output channels.")
+        fobs = np.median(fobs.reshape(-1, nfreq_int), axis=1)
+        nchan = len(fobs)
     print('Opening output file {0}.hdf5'.format(fout))
     with h5py.File('{0}.hdf5'.format(fout), 'w') as fhdf5:
         initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order, fobs,
@@ -255,6 +260,15 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, samples_per_frame_out,
             data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
             t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                        sample_rate_out)
+            if nfreq_int > 1:
+                if not nans:
+                    data = np.mean(data.reshape(
+                        data.shape[0], data.shape[1], nchan, nfreq_int, npol),
+                                   axis=3)
+                else:
+                    data = np.nanmean(data.reshape(
+                    data.shape[0], data.shape[1], nchan, nfreq_int, npol),
+                                     axis=3)
             update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
 
             idx_frame_out += 1
