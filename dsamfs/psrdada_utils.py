@@ -8,9 +8,11 @@ by the DSA-110 correlator
 """
 
 import os
-import json
+import socket
+import yaml
 from datetime import datetime
 import numpy as np
+from collections import OrderedDict
 import astropy.units as u
 import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
@@ -19,6 +21,14 @@ from dsamfs.fringestopping import zenith_visibility_model
 from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
 import casatools as cc
+from dsautils import dsa_store
+
+def get_time():
+    """
+    Gets the start time of the first spectrum from etcd.
+    """
+    d = dsa_store.DsaStore()
+    return d.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']+0.65536/86400.
 
 def read_header(reader):
     """
@@ -97,8 +107,8 @@ def update_time(tstart, samples_per_frame, sample_rate):
     tstart : float
           The start time of the next dataframe in seconds.
     """
-    t = tstart+np.arange(samples_per_frame)/sample_rate
-    tstart += samples_per_frame/sample_rate
+    t = tstart+np.arange(samples_per_frame)/sample_rate/ct.SECONDS_PER_DAY
+    tstart += samples_per_frame/sample_rate/ct.SECONDS_PER_DAY
     return t, tstart
 
 def integrate(data, nint):
@@ -253,28 +263,35 @@ def parse_param_file(param_file):
         The full path to the json parameter file.
     """
     fhand = open(param_file)
-    params = json.load(fhand)
+    params = yaml.safe_load(fhand)
     fhand.close()
     test = params['test']
     key_string = params['key_string']
     nant = params['nant']
     nchan = params['nchan']
     npol = params['npol']
-    fout = params['hdf5_fname']
     samples_per_frame = params['samples_per_frame']
     samples_per_frame_out = params['samples_per_frame_out']
     nint = params['nint']
-    fs_table = params['fs_table']
-    antenna_order = params['antenna_order']
+    nfreq_int = params['nfreq_int']
+    ant_od = OrderedDict(sorted(params['antenna_order'].items()))
+    antenna_order = list(ant_od.values())
     dfreq = params['bw_GHz']/nchan
-    fobs = params['f0_GHz']+dfreq/2+np.arange(nchan)*dfreq
-    if not params['chan_ascending']:
-        fobs = fobs[::-1]
+    if params['chan_ascending']:
+        fobs = params['f0_GHz']+np.arange(nchan)*dfreq
+    else:
+        fobs = params['f0_GHz']-np.arange(nchan)*dfreq
     pt_dec = params['pt_dec'] # in radians
+    tsamp = params['tsamp'] # in seconds
 
+    hname = socket.gethostname()
+    ch0 = params['ch0'][hname]
+    nchan_spw = params['nchan_spw']
+    fobs = fobs[ch0:ch0+nchan_spw]
+    
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
-    return test, key_string, nant, nchan, npol, fobs, fout, \
-        samples_per_frame, samples_per_frame_out, nint, fs_table, \
-        antenna_order, pt_dec
+    return test, key_string, nant, nchan_spw, npol, fobs, \
+        samples_per_frame, samples_per_frame_out, nint, \
+        nfreq_int, antenna_order, pt_dec, tsamp
