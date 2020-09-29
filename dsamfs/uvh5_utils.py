@@ -240,7 +240,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
         if outdir is not None:
             fout = '{0}/{1}'.format(outdir, fout)
         print('Opening output file {0}.hdf5'.format(fout))
-        with h5py.File('{0}.hdf5'.format(fout), 'w') as fhdf5:
+        with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, fs_table)
 
@@ -294,7 +294,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                 idx_frame_out += 1
                 idx_frame_file += 1
                 print('Integration {0} done'.format(idx_frame_out))
-
+        os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))    
     reader.disconnect()
 
 def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
