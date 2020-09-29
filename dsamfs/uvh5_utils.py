@@ -221,7 +221,7 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
 
 def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
-                 fs_table, tsamp, bname, uvw, fobs, vis_model):
+                 fs_table, tsamp, bname, uvw, fobs, vis_model, test):
     """
     Reads dada buffer and writes to uvh5 file.
     """
@@ -244,17 +244,16 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, fs_table)
 
-
             idx_frame_file = 0 # number of fsed frames write to curent file
             while idx_frame_file < max_frames_per_file:
                 data_in = np.ones(
-                    (samples_per_frame_out*nint, nbls, nchan, npol),
+                    (samples_per_frame_out*nint, nbls, nchan*nfreq_int, npol),
                     dtype=np.complex64)*np.nan
                 for i in range(data_in.shape[0]):
                     try:
                         assert reader.isConnected
                         data_in[i, ...] = pu.read_buffer(
-                            reader, nbls, nchan, npol)
+                            reader, nbls, nchan*nfreq_int, npol)
                     except (AssertionError, ValueError) as e:
                         print('Last integration has {0} timesamples'.format(i))
                         logger.info('Disconnected from buffer with message'
@@ -265,7 +264,10 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                         break
 
                 if idx_frame_out == 0:
-                    tstart = pu.get_time()
+                    if test:
+                        tstart = 59000.5
+                    else:
+                        tstart = pu.get_time()
                     tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY+2400000.5
 
                 data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
@@ -280,6 +282,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                         data = np.nanmean(data.reshape(
                         data.shape[0], data.shape[1], nchan, nfreq_int, npol),
                                          axis=3)
+
                 update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
 
                 idx_frame_out += 1
