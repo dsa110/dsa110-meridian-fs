@@ -240,12 +240,12 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
         if outdir is not None:
             fout = '{0}/{1}'.format(outdir, fout)
         print('Opening output file {0}.hdf5'.format(fout))
-        with h5py.File('{0}.hdf5'.format(fout), 'w') as fhdf5:
+        with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, fs_table)
 
             idx_frame_file = 0 # number of fsed frames write to curent file
-            while idx_frame_file < max_frames_per_file:
+            while (idx_frame_file < max_frames_per_file) and (not nans):
                 data_in = np.ones(
                     (samples_per_frame_out*nint, nbls, nchan*nfreq_int, npol),
                     dtype=np.complex64)*np.nan
@@ -278,18 +278,24 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                         data = np.mean(data.reshape(
                             data.shape[0], data.shape[1], nchan, nfreq_int,
                             npol), axis=3)
+                        nsamples = np.mean(nsamples.reshape(
+                            nsamples.shape[0], nsamples.shape[1], nchan,
+                            nfreq_int, npol), axis=3)
                     else:
                         data = np.nanmean(data.reshape(
-                        data.shape[0], data.shape[1], nchan, nfreq_int, npol),
+                            data.shape[0], data.shape[1], nchan, nfreq_int, npol),
                                          axis=3)
+                        nsamples = np.nanmean(nsamples.reshape(
+                            nsamples.shape[0], nsamples.shape[1], nchan,
+                            nfreq_int, npol), axis=3)
 
                 update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
 
                 idx_frame_out += 1
                 idx_frame_file += 1
                 print('Integration {0} done'.format(idx_frame_out))
-
-        reader.disconnect()
+        os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))    
+    reader.disconnect()
 
 def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
                flux=None):
@@ -463,9 +469,9 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
 
 #     with table('{0}.ms'.format(msname), readonly=False) as tb:
 #         tb.putcol('MODEL_DATA', model)
-    ms = cc.ms()
-    ms.open('{0}.ms'.format(msname), nomodify=False)
-    rec = ms.getdata(["model_data"])
-    rec['model_data'] = model
-    ms.putdata(rec)
-    ms.close()
+#    ms = cc.ms()
+#    ms.open('{0}.ms'.format(msname), nomodify=False)
+#    rec = ms.getdata(["model_data"])
+#    rec['model_data'] = model
+#    ms.putdata(rec)
+#    ms.close()
