@@ -7,10 +7,9 @@ ringbuffer.  Fringestops on the meridian for each integrated
 sample, before integrating the data and writing it to a hdf5 file.
 """
 import sys
+import os
 import subprocess
-from datetime import datetime
 from psrdada import Reader
-import dsacalib.constants as ct
 import dsautils.dsa_syslog as dsl
 import dsamfs.psrdada_utils as pu
 from dsamfs.uvh5_utils import dada_to_uvh5
@@ -20,7 +19,7 @@ logger = dsl.DsaSyslogger()
 logger.subsystem("software")
 logger.app("dsamfs")
 
-def run_fringestopping(param_file, header_file=None, outdir=None):
+def run_fringestopping(param_file, header_file=None, output_dir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
     ----------
@@ -28,7 +27,6 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
         The full path to the json parameter file. Defaults to the file
         meridian_fringestopping_parameters.py in the package directory.
     """
-    now = datetime.utcnow()
     if param_file is None:
         param_file = '{0}/meridian_fringestopping_parameters.json'.format(
             dsamfs.__path__[0])
@@ -39,16 +37,14 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
     key = int('0x{0}'.format(key_string), 16)
 
     fs_table = 'fringestopping_table.npz'
-    fout = '{0}_{1:.4f}rad'.format(now.strftime("%Y-%m-%dT%H:%M:%S"),
-                                        pt_dec)
-    if outdir is not None:
-        fout = '{0}/{1}'.format(outdir, fout)
-        fs_table = '{0}/{1}'.format(outdir, fs_table)
+    if output_dir is not None:
+        fs_table = '{0}/{1}'.format(output_dir, fs_table)
     bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, casa_order=False)
 
     logger.info("Started fringestopping of dada buffer {0} with {1} "
                 "integrations and {2} baselines. Fringestopped data written "
-                "to {3}.hdf5".format(key_string, nint, nbls, fout))
+                "to {3}.hdf5".format(key_string, nint, nbls,
+                                     max(output_dir, os.getcwd())))
 
     if test:
         sample_rate = 1/0.134217728
@@ -84,9 +80,9 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
 
     vis_model = pu.load_visibility_model(fs_table, blen, nant, nint, fobs,
                                          pt_dec, tsamp)
-    dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, nfreq_int, samples_per_frame_out,
-                 sample_rate_out, pt_dec, antenna_order, fs_table,
-                 tsamp, bname, uvw, fobs, vis_model)
+    dada_to_uvh5(reader, output_dir, nbls, nchan, npol, nint, nfreq_int,
+                 samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
+                 fs_table, tsamp, bname, uvw, fobs, vis_model)
 
     if test:
         outs, errs = p_write.communicate(timeout=15)
@@ -105,18 +101,16 @@ def run_fringestopping(param_file, header_file=None, outdir=None):
         else:
             print(outs.decode("utf-8"))
 
-    logger.info("Disconnected from psrdada buffer {0} and closed file "
-                "{1}.hdf5".format(key_string, fout))
+    logger.info("Disconnected from psrdada buffer {0}".format(key_string))
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         PARAM_FILE = sys.argv[1]
         if len(sys.argv) > 2:
-            outdir = sys.argv[2]
+            OUTDIR = sys.argv[2]
         else:
-            outdir = None
+            OUTDIR = None
     else:
         PARAM_FILE = None
-    run_fringestopping(PARAM_FILE, outdir=outdir)
-
+    run_fringestopping(PARAM_FILE, output_dir=OUTDIR)

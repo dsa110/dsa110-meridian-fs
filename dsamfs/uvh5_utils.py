@@ -16,16 +16,16 @@ from casatasks import importuvfits
 import casatools as cc
 from casacore.tables import table
 from pyuvdata import UVData
+import astropy.constants as c
+import astropy.units as u
 from antpos.utils import get_itrf, get_baselines
 import dsautils.dsa_syslog as dsl
-import astropy.constants as c
 from dsacalib.utils import get_autobl_indices
 from dsacalib import constants as ct
 from dsacalib.fringestopping import amplitude_sky_model
 import dsacalib.utils as du
 import dsamfs.psrdada_utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith, calc_uvw_blt
-import astropy.units as u
 from astropy.utils import iers
 iers.conf.iers_auto_url_mirror = ct.IERS_TABLE
 iers.conf.auto_max_age = None
@@ -219,9 +219,9 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
     fhdf5["Data"]["nsamples"][old_size:, ...] = nsamples.reshape(
         nt*nbls, 1, nchan, npol)
 
-def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, nfreq_int, samples_per_frame_out,
-                 sample_rate_out, pt_dec, antenna_order, fs_table,
-                 tsamp, bname, uvw, fobs, vis_model):
+def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
+                 samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
+                 fs_table, tsamp, bname, uvw, fobs, vis_model):
     """
     Reads dada buffer and writes to uvh5 file.
     """
@@ -230,49 +230,61 @@ def dada_to_uvh5(reader, fout, nbls, nchan, npol, nint, nfreq_int, samples_per_f
                                       "number of output channels.")
         fobs = np.median(fobs.reshape(-1, nfreq_int), axis=1)
         nchan = len(fobs)
-    print('Opening output file {0}.hdf5'.format(fout))
-    with h5py.File('{0}.hdf5'.format(fout), 'w') as fhdf5:
-        initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order, fobs,
-                             fs_table)
 
-        idx_frame_out = 0
-        nans = False
-        while not nans:
-            data_in = np.ones((samples_per_frame_out*nint, nbls, nchan, npol),
-                              dtype=np.complex64)*np.nan
-            for i in range(data_in.shape[0]):
-                try:
-                    assert reader.isConnected
-                    data_in[i, ...] = pu.read_buffer(reader, nbls, nchan, npol)
-                except (AssertionError, ValueError) as e:
-                    print('Last integration has {0} timesamples'.format(i))
-                    logger.info('Disconnected from buffer with message'
-                                '{0}:\n{1}'.
-                                format(type(e).__name__, ''.join(
-                                    traceback.format_tb(e.__traceback__))))
-                    nans = True
-                    break
+    nans = False
+    idx_frame_out = 0 # total number of fsed frames, for timekeeping
+    max_frames_per_file = int(np.ceil(60*60*sample_rate_out))
+    while not nans:
+        now = datetime.utcnow()
+        fout = now.strftime("%Y-%m-%dT%H:%M:%S")
+        if outdir is not None:
+            fout = '{0}/{1}'.format(outdir, fout)
+        print('Opening output file {0}.hdf5'.format(fout))
+        with h5py.File('{0}.hdf5'.format(fout), 'w') as fhdf5:
+            initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
+                                 fobs, fs_table)
 
-            if idx_frame_out == 0:
-                tstart = pu.get_time()
-                tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY+2400000.5
 
-            data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
-            t, tstart = pu.update_time(tstart, samples_per_frame_out,
-                                       sample_rate_out)
-            if nfreq_int > 1:
-                if not nans:
-                    data = np.mean(data.reshape(
+            idx_frame_file = 0 # number of fsed frames write to curent file
+            while idx_frame_file < max_frames_per_file:
+                data_in = np.ones(
+                    (samples_per_frame_out*nint, nbls, nchan, npol),
+                    dtype=np.complex64)*np.nan
+                for i in range(data_in.shape[0]):
+                    try:
+                        assert reader.isConnected
+                        data_in[i, ...] = pu.read_buffer(
+                            reader, nbls, nchan, npol)
+                    except (AssertionError, ValueError) as e:
+                        print('Last integration has {0} timesamples'.format(i))
+                        logger.info('Disconnected from buffer with message'
+                                    '{0}:\n{1}'.
+                                    format(type(e).__name__, ''.join(
+                                        traceback.format_tb(e.__traceback__))))
+                        nans = True
+                        break
+
+                if idx_frame_out == 0:
+                    tstart = pu.get_time()
+                    tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY+2400000.5
+
+                data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
+                t, tstart = pu.update_time(tstart, samples_per_frame_out,
+                                           sample_rate_out)
+                if nfreq_int > 1:
+                    if not nans:
+                        data = np.mean(data.reshape(
+                            data.shape[0], data.shape[1], nchan, nfreq_int,
+                            npol), axis=3)
+                    else:
+                        data = np.nanmean(data.reshape(
                         data.shape[0], data.shape[1], nchan, nfreq_int, npol),
-                                   axis=3)
-                else:
-                    data = np.nanmean(data.reshape(
-                    data.shape[0], data.shape[1], nchan, nfreq_int, npol),
-                                     axis=3)
-            update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
+                                         axis=3)
+                update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
 
-            idx_frame_out += 1
-            print('Integration {0} done'.format(idx_frame_out))
+                idx_frame_out += 1
+                idx_frame_file += 1
+                print('Integration {0} done'.format(idx_frame_out))
 
         reader.disconnect()
 
@@ -373,7 +385,7 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
         UV.Nblts, UV.Nspws, UV.Nfreqs, UV.Npols)
 
     UV.phase(ra.to_value(u.rad), dec.to_value(u.rad), use_ant_pos=False)
-    # Below is the manual calibration which can be used instead if needed.  
+    # Below is the manual calibration which can be used instead if needed.
     #uvw = calc_uvw_blt(blen, time.mjd, 'RADEC', ra.to(u.rad), dec.to(u.rad))
     #dw = (uvw[:, -1] - np.tile(uvw_m[np.newaxis, :, -1], (UV.Ntimes, 1)
     #                          ).reshape(-1))*u.m
@@ -387,7 +399,7 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
     #UV.phase_center_epoch = 2000.
     # Look for missing channels
     freq = UV.freq_array.squeeze()
-    # The channels may have been reordered by pyuvdata so check that the 
+    # The channels may have been reordered by pyuvdata so check that the
     # parameter UV.channel_width makes sense now.
     ascending = np.median(np.diff(freq)) > 0
     if ascending:
@@ -420,10 +432,10 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
         UV.data_array = data_out
         UV.nsample_array = nsample_out
         UV.flag_array = flag_out
-    
+
     if os.path.exists('{0}.fits'.format(msname)):
         os.remove('{0}.fits'.format(msname))
-        
+
     UV.write_uvfits('{0}.fits'.format(msname),
                     spoof_nonessential=True)
     # Get the model to write to the data
@@ -440,7 +452,7 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
         shutil.rmtree('{0}.ms'.format(msname))
     importuvfits('{0}.fits'.format(msname),
                  '{0}.ms'.format(msname))
-    
+
     # Changes these to use casacore instead
     with table('{0}.ms/ANTENNA'.format(msname), readonly=False) as tb:
         tb.putcol('POSITION',
