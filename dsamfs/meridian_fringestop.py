@@ -42,9 +42,7 @@ def run_fringestopping(param_file, header_file=None, output_dir=None):
     bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, casa_order=False)
 
     logger.info("Started fringestopping of dada buffer {0} with {1} "
-                "integrations and {2} baselines. Fringestopped data written "
-                "to {3}.hdf5".format(key_string, nint, nbls,
-                                     max(output_dir, os.getcwd())))
+                "integrations and {2} baselines.")
 
     if test:
         sample_rate = 1/0.134217728
@@ -107,12 +105,12 @@ if __name__ == "__main__":
     else:
         PARAM_FILE = None
     if len(sys.argv) > 2:
-        HEADER_FILE = sys.argv[2]
-    else:
-        HEADER_FILE = None
-    if len(sys.argv) > 3:
-        OUTDIR = sys.argv[3]
+        OUTDIR = sys.argv[2]
     else:
         OUTDIR = None
+    if len(sys.argv) > 3:
+        HEADER_FILE = sys.argv[3]
+    else:
+        HEADER_FILE = None
 
     run_fringestopping(PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR)
