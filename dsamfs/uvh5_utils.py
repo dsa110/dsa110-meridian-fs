@@ -18,6 +18,7 @@ from casacore.tables import table, addImagingColumns
 from pyuvdata import UVData
 import astropy.constants as c
 import astropy.units as u
+from psrdada.exceptions import PSRDadaError
 from antpos.utils import get_itrf, get_baselines
 import dsautils.dsa_syslog as dsl
 from dsacalib.utils import get_autobl_indices
@@ -254,7 +255,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                         assert reader.isConnected
                         data_in[i, ...] = pu.read_buffer(
                             reader, nbls, nchan*nfreq_int, npol)
-                    except (AssertionError, ValueError) as e:
+                    except (AssertionError, ValueError, PSRDadaError) as e:
                         print('Last integration has {0} timesamples'.format(i))
                         logger.info('Disconnected from buffer with message'
                                     '{0}:\n{1}'.
@@ -294,8 +295,11 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                 idx_frame_out += 1
                 idx_frame_file += 1
                 print('Integration {0} done'.format(idx_frame_out))
-        os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))    
-    reader.disconnect()
+        os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))
+    try:
+        reader.disconnect()
+    except PSRDadaError:
+        pass
 
 def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
                flux=None):
