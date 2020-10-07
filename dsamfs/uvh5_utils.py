@@ -14,7 +14,7 @@ import h5py
 import scipy # pylint: disable=unused-import
 from casatasks import importuvfits
 import casatools as cc
-from casacore.tables import table
+from casacore.tables import table, addImagingColumns
 from pyuvdata import UVData
 import astropy.constants as c
 import astropy.units as u
@@ -317,6 +317,7 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
     """
     zenith_dec = 0.6503903199825691*u.rad
     UV = UVData()
+    # This next section contains the list 
     if dt is not None:
         if isinstance(fname, list):
             fname_init = fname[0]
@@ -449,13 +450,13 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
                     spoof_nonessential=True)
     # Get the model to write to the data
     if flux is not None:
-        fobs = UV.freq_array.squeeze()
+        fobs = UV.freq_array.squeeze()/1e9
         lst = UV.lst_array
         model = amplitude_sky_model(du.src('cal', ra, dec, flux),
                                     lst, pt_dec, fobs).T
-        model = np.tile(model, (2, 1, 1))
+        model = np.tile(model[:, :, np.newaxis], (1, 1, UV.Npols))
     else:
-        model = np.ones((2, UV.Nfreqs, UV.Nblts))
+        model = np.ones((UV.Nblts, UV.Nfreqs, UV.Npols), dtype=np.complex64)
 
     if os.path.exists('{0}.ms'.format(msname)):
         shutil.rmtree('{0}.ms'.format(msname))
@@ -467,11 +468,6 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
         tb.putcol('POSITION',
               np.array([df_itrf['x_m'], df_itrf['y_m'], df_itrf['z_m']]).T)
 
-#     with table('{0}.ms'.format(msname), readonly=False) as tb:
-#         tb.putcol('MODEL_DATA', model)
-#    ms = cc.ms()
-#    ms.open('{0}.ms'.format(msname), nomodify=False)
-#    rec = ms.getdata(["model_data"])
-#    rec['model_data'] = model
-#    ms.putdata(rec)
-#    ms.close()
+    addImagingColumns('{0}.ms'.format(msname))
+    with table('{0}.ms'.format(msname), readonly=False) as tb:
+        tb.putcol('MODEL_DATA', model)
