@@ -102,18 +102,18 @@ def run_fringestopping(param_file, header_file=None, output_dir=None):
     logger.info("Disconnected from psrdada buffer {0}".format(key_string))
 
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        PARAM_FILE = sys.argv[1]
-    else:
-        PARAM_FILE = None
-    if len(sys.argv) > 2:
-        OUTDIR = sys.argv[2]
-    else:
-        OUTDIR = None
-    if len(sys.argv) > 3:
-        HEADER_FILE = sys.argv[3]
-    else:
-        HEADER_FILE = None
+#if __name__ == "__main__":
+if len(sys.argv) > 1:
+    PARAM_FILE = sys.argv[1]
+else:
+    PARAM_FILE = None
+if len(sys.argv) > 2:
+    OUTDIR = sys.argv[2]
+else:
+    OUTDIR = None
+if len(sys.argv) > 3:
+    HEADER_FILE = sys.argv[3]
+else:
+    HEADER_FILE = None
 
-    run_fringestopping(PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR)
+run_fringestopping(PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR)
