@@ -234,7 +234,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
 
     nans = False
     idx_frame_out = 0 # total number of fsed frames, for timekeeping
-    max_frames_per_file = int(np.ceil(60*60*sample_rate_out))
+    max_frames_per_file = int(np.ceil(15*60*sample_rate_out))
     while not nans:
         now = datetime.utcnow()
         fout = now.strftime("%Y-%m-%dT%H:%M:%S")
