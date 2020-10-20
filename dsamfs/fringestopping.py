@@ -84,11 +84,11 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
                            qa.quantity(blen[i, 1], 'm'),
                            qa.quantity(blen[i, 2], 'm'))
           # Get the uvw coordinates
-         try:
-             buvw[i, :] = me.touvw(bl)[1]['value']
-         except KeyError:
-             contains_nans = True
-             buvw[i, :] = np.ones(3)*np.nan
+        try:
+            buvw[i, :] = me.touvw(bl)[1]['value']
+        except KeyError:
+            contains_nans = True
+            buvw[i, :] = np.ones(3)*np.nan
     if contains_nans:
         print('Warning: some solutions not found for u, v, w coordinates')
     return buvw
