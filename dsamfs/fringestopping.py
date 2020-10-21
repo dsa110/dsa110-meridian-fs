@@ -73,17 +73,17 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
         direction_set = True
     contains_nans = False
     for i in range(nblt):
-         me.doframe(me.epoch('UTC', qa.quantity(tobs[i], 'd')))
-         if not direction_set:
-             me.doframe(me.direction(src_epoch,
-                                     qa.quantity(src_lon[i].to_value(u.deg),
-                                                 'deg'),
-                                     qa.quantity(src_lat[i].to_value(u.deg),
-                                                 'deg')))
-         bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
-                           qa.quantity(blen[i, 1], 'm'),
-                           qa.quantity(blen[i, 2], 'm'))
-          # Get the uvw coordinates
+        me.doframe(me.epoch('UTC', qa.quantity(tobs[i], 'd')))
+        if not direction_set:
+            me.doframe(me.direction(src_epoch,
+                                    qa.quantity(src_lon[i].to_value(u.deg),
+                                                'deg'),
+                                    qa.quantity(src_lat[i].to_value(u.deg),
+                                                'deg')))
+        bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
+                          qa.quantity(blen[i, 1], 'm'),
+                          qa.quantity(blen[i, 2], 'm'))
+        # Get the uvw coordinates
         try:
             buvw[i, :] = me.touvw(bl)[1]['value']
         except KeyError:
