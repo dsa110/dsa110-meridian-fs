@@ -65,30 +65,30 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
         direction_set = False
     else:
         if (src_epoch == 'HADEC') and (nblt > 1):
-            raise TypeError('HA and DEC must be specified at each baseline-time in '
-                           'tobs.')
+            raise TypeError('HA and DEC must be specified at each '
+                           'baseline-time in tobs.')
         me.doframe(me.direction(src_epoch,
                                 qa.quantity(src_lon.to_value(u.deg), 'deg'),
                                 qa.quantity(src_lat.to_value(u.deg), 'deg')))
         direction_set = True
     contains_nans = False
     for i in range(nblt):
-         me.doframe(me.epoch('UTC', qa.quantity(tobs[i], 'd')))
-         if not direction_set:
-             me.doframe(me.direction(src_epoch,
-                                     qa.quantity(src_lon[i].to_value(u.deg),
-                                                 'deg'),
-                                     qa.quantity(src_lat[i].to_value(u.deg),
-                                                 'deg')))
-         bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
-                           qa.quantity(blen[i, 1], 'm'),
-                           qa.quantity(blen[i, 2], 'm'))
-          # Get the uvw coordinates
-         try:
-             buvw[i, :] = me.touvw(bl)[1]['value']
-         except KeyError:
-             contains_nans = True
-             buvw[i, :] = np.ones(3)*np.nan
+        me.doframe(me.epoch('UTC', qa.quantity(tobs[i], 'd')))
+        if not direction_set:
+            me.doframe(me.direction(src_epoch,
+                                    qa.quantity(src_lon[i].to_value(u.deg),
+                                                'deg'),
+                                    qa.quantity(src_lat[i].to_value(u.deg),
+                                                'deg')))
+        bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
+                          qa.quantity(blen[i, 1], 'm'),
+                          qa.quantity(blen[i, 2], 'm'))
+        # Get the uvw coordinates
+        try:
+            buvw[i, :] = me.touvw(bl)[1]['value']
+        except KeyError:
+            contains_nans = True
+            buvw[i, :] = np.ones(3)*np.nan
     if contains_nans:
         print('Warning: some solutions not found for u, v, w coordinates')
     return buvw

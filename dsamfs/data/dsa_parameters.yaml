@@ -41,19 +41,19 @@ antenna_order:
 nchan_spw: 384
 ch0:
   dsaenv01: 3400
-  corr00: 1024
-  corr01: 1408
-  corr02: 1792
-  corr03: 2176
-  corr04: 2560
-  corr05: 2944
-  corr06: 3328
-  corr07: 3712
-  corr08: 4096
-  corr09: 4480
-  corr10: 4864
-  corr11: 5248
-  corr12: 5632
-  corr13: 6016
-  corr14: 6400
-  corr15: 6784
+  corr01: 1024
+  corr02: 1408
+  corr03: 1792
+  corr04: 2176
+  corr05: 2560
+  corr06: 2944
+  corr07: 3328
+  corr08: 3712
+  corr09: 4096
+  corr10: 4480
+  corr11: 4864
+  corr12: 5248
+  corr13: 5632
+  corr14: 6016
+  corr15: 6400
+  corr16: 6784
