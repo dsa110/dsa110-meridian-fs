@@ -273,6 +273,7 @@ def parse_param_file(param_file):
     samples_per_frame = params['samples_per_frame']
     samples_per_frame_out = params['samples_per_frame_out']
     nint = params['nint']
+    fringestop = params['fringestop']
     nfreq_int = params['nfreq_int']
     ant_od = OrderedDict(sorted(params['antenna_order'].items()))
     antenna_order = list(ant_od.values())
@@ -294,4 +295,4 @@ def parse_param_file(param_file):
 
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
-        nfreq_int, antenna_order, pt_dec, tsamp
+        nfreq_int, antenna_order, pt_dec, tsamp, fringestop
