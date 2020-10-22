@@ -7,6 +7,7 @@ Casa-based routines for calculating and applying fringe-stopping phases
 to visibilities
 """
 import sys
+import os
 import numpy as np
 import scipy # pylint: disable=unused-import
 import casatools as cc
@@ -134,6 +135,8 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     bw = bw-bwref[:, np.newaxis]
     bw = bw.T
     bwref = bwref.T
+    if os.path.exists(outname):
+        os.unlink(outname)
     np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,
              bwref=bwref)
 
