@@ -1,40 +1,110 @@
-"""
-HDF5_UTILS.PY
+"""DSAMFS/IO.PY
 
-Dana Simard, dana.simard@astro.caltech.edu, 02/2020
+Routines to read and manipulate the correlator-data psrdada buffer stream and
+write the correlated data to a uvh5 file.
 
-Routines to interact w/ hdf5 files used for the 24-hr visibility buffer
+Dana Simard, dana.simard@astro.caltech.edu, 2020
 """
+
 from datetime import datetime
 import os
-import shutil
 import traceback
 import numpy as np
 import h5py
-import scipy # pylint: disable=unused-import
-from casatasks import importuvfits
-import casatools as cc
-from casacore.tables import table, addImagingColumns
-from pyuvdata import UVData
-import astropy.constants as c
 import astropy.units as u
 from psrdada.exceptions import PSRDadaError
-from antpos.utils import get_itrf, get_baselines
+from antpos.utils import get_itrf
 import dsautils.dsa_syslog as dsl
-from dsacalib.utils import get_autobl_indices
-from dsacalib import constants as ct
-from dsacalib.fringestopping import amplitude_sky_model
-import dsacalib.utils as du
-import dsamfs.psrdada_utils as pu
-from dsamfs.fringestopping import fringestop_on_zenith, calc_uvw_blt
-from astropy.utils import iers
-iers.conf.iers_auto_url_mirror = ct.IERS_TABLE
-iers.conf.auto_max_age = None
-from astropy.time import Time # pylint: disable=wrong-import-position
+import dsacalib.constants as ct
+import dsamfs.utils as pu
+from dsamfs.fringestopping import fringestop_on_zenith
 
 logger = dsl.DsaSyslogger()
 logger.subsystem("software")
-logger.app("dsacalib")
+logger.app("dsamfs")
+
+def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
+                 samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
+                 fs_table, tsamp, bname, uvw, fobs, vis_model, test):
+    """
+    Reads dada buffer and writes to uvh5 file.
+    """
+    if nfreq_int > 1:
+        assert nchan%nfreq_int == 0, ("Number of channels must be an integer "
+                                      "number of output channels.")
+        fobs = np.median(fobs.reshape(-1, nfreq_int), axis=1)
+        nchan = len(fobs)
+
+    nans = False
+    idx_frame_out = 0 # total number of fsed frames, for timekeeping
+    max_frames_per_file = int(np.ceil(60*60*sample_rate_out))
+    while not nans:
+        now = datetime.utcnow()
+        fout = now.strftime("%Y-%m-%dT%H:%M:%S")
+        if outdir is not None:
+            fout = '{0}/{1}'.format(outdir, fout)
+        print('Opening output file {0}.hdf5'.format(fout))
+        with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
+            initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
+                                 fobs, fs_table)
+
+            idx_frame_file = 0 # number of fsed frames write to curent file
+            while (idx_frame_file < max_frames_per_file) and (not nans):
+                data_in = np.ones(
+                    (samples_per_frame_out*nint, nbls, nchan*nfreq_int, npol),
+                    dtype=np.complex64)*np.nan
+                for i in range(data_in.shape[0]):
+                    try:
+                        assert reader.isConnected
+                        data_in[i, ...] = pu.read_buffer(
+                            reader, nbls, nchan*nfreq_int, npol)
+                    except (AssertionError, ValueError, PSRDadaError) as e:
+                        print('Last integration has {0} timesamples'.format(i))
+                        logger.info('Disconnected from buffer with message'
+                                    '{0}:\n{1}'.
+                                    format(type(e).__name__, ''.join(
+                                        traceback.format_tb(e.__traceback__))))
+                        nans = True
+                        break
+
+                if idx_frame_out == 0:
+                    if test:
+                        tstart = 59000.5
+                    else:
+                        tstart = pu.get_time()
+                    tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY+2400000.5
+
+                data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
+                t, tstart = pu.update_time(tstart, samples_per_frame_out,
+                                           sample_rate_out)
+                if nfreq_int > 1:
+                    if not nans:
+                        data = np.mean(data.reshape(
+                            data.shape[0], data.shape[1], nchan, nfreq_int,
+                            npol), axis=3)
+                        nsamples = np.mean(nsamples.reshape(
+                            nsamples.shape[0], nsamples.shape[1], nchan,
+                            nfreq_int, npol), axis=3)
+                    else:
+                        data = np.nanmean(
+                            data.reshape(data.shape[0], data.shape[1], nchan,
+                                         nfreq_int, npol),
+                            axis=3
+                        )
+                        nsamples = np.nanmean(nsamples.reshape(
+                            nsamples.shape[0], nsamples.shape[1], nchan,
+                            nfreq_int, npol), axis=3)
+
+                update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
+
+                idx_frame_out += 1
+                idx_frame_file += 1
+                print('Integration {0} done'.format(idx_frame_out))
+        os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))
+    try:
+        reader.disconnect()
+    except PSRDadaError:
+        pass
 
 def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
                          fs_table=None):
@@ -74,7 +144,7 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     # Header parameters
     header = fhdf.create_group("Header")
     data = fhdf.create_group("Data")
-    # The following must be defined - to add in
+    # The following must be defined
     header["latitude"] = (ct.OVRO_LAT*u.rad).to_value(u.deg)
     header["longitude"] = (ct.OVRO_LON*u.rad).to_value(u.deg)
     header["altitude"] = ct.OVRO_ALT
@@ -179,43 +249,76 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
     assert data.shape == nsamples.shape
     assert uvw.shape[1] == nbls
     assert uvw.shape[2] == 3
+
     antenna_order = fhdf5["Header"]["antenna_names"][:]
     ant_1_array = np.array(
         [np.where(antenna_order == np.string_(bn.split('-')[0]))
-         for bn in bname], dtype=np.int).squeeze()
+         for bn in bname], dtype=np.int
+    ).squeeze()
     ant_2_array = np.array(
         [np.where(antenna_order == np.string_(bn.split('-')[1]))
-         for bn in bname], dtype=np.int).squeeze()
+         for bn in bname], dtype=np.int
+    ).squeeze()
+
     old_size = fhdf5["Header"]["time_array"].shape[0]
     new_size = old_size+nt*nbls
+
+    # TIME_ARRAY
     fhdf5["Header"]["time_array"].resize(new_size, axis=0)
     fhdf5["Header"]["time_array"][old_size:] = np.tile(
-        t[:, np.newaxis], (1, nbls)).flatten()
+        t[:, np.newaxis],
+        (1, nbls)
+    ).flatten()
+
+    # INTEGRATION_TIME
     fhdf5["Header"]["integration_time"].resize(new_size, axis=0)
     fhdf5["Header"]["integration_time"][old_size:] = np.ones(
-        (nt*nbls, ), dtype=np.float32)*tsamp
-    # Note that the uvw convention for pyuvdata is -1*the standard convention
+        (nt*nbls, ),
+        dtype=np.float32
+    )*tsamp
+
+    # UVW_ARRAY
+    # Note that the uvw and baseline convention for pyuvdata is B-A,
+    # where vis=A^* B
     fhdf5["Header"]["uvw_array"].resize(new_size, axis=0)
     if uvw.shape[0] == 1:
-        fhdf5["Header"]["uvw_array"][old_size:, :] = -1*np.tile(
-            uvw, (nt, 1, 1)).reshape(-1, 3)
+        fhdf5["Header"]["uvw_array"][old_size:, :] = np.tile(
+            uvw,
+            (nt, 1, 1)
+        ).reshape(-1, 3)
     else:
         assert uvw.shape[0] == nt
-        fhdf5["Header"]["uvw_array"][old_size:, :] = -1*uvw.reshape(-1, 3)
+        fhdf5["Header"]["uvw_array"][old_size:, :] = uvw.reshape(-1, 3)
+
+    # Ntimes and Nblts
     fhdf5["Header"]["Ntimes"][()] = new_size//nbls
     fhdf5["Header"]["Nblts"][()] = new_size
+
+    # ANT_1_ARRAY
     fhdf5["Header"]["ant_1_array"].resize(new_size, axis=0)
     fhdf5["Header"]["ant_1_array"][old_size:] = np.tile(
-        ant_1_array[np.newaxis, :], (nt, 1)).flatten()
+        ant_1_array[np.newaxis, :],
+        (nt, 1)
+    ).flatten()
+
+    # ANT_2_ARRAY
     fhdf5["Header"]["ant_2_array"].resize(new_size, axis=0)
     fhdf5["Header"]["ant_2_array"][old_size:] = np.tile(
-        ant_2_array[np.newaxis, :], (nt, 1)).flatten()
+        ant_2_array[np.newaxis, :],
+        (nt, 1)
+    ).flatten()
+
+    # VISDATA
     fhdf5["Data"]["visdata"].resize(new_size, axis=0)
     fhdf5["Data"]["visdata"][old_size:, ...] = data.reshape(
         nt*nbls, 1, nchan, npol)
+
+    # FLAGS
     fhdf5["Data"]["flags"].resize(new_size, axis=0)
     fhdf5["Data"]["flags"][old_size:, ...] = np.zeros(
         (nt*nbls, 1, nchan, npol), dtype=np.bool)
+
+    # NSAMPLES
     fhdf5["Data"]["nsamples"].resize(new_size, axis=0)
     fhdf5["Data"]["nsamples"][old_size:, ...] = nsamples.reshape(
         nt*nbls, 1, nchan, npol)
@@ -475,3 +578,4 @@ def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
     addImagingColumns('{0}.ms'.format(msname))
     with table('{0}.ms'.format(msname), readonly=False) as tb:
         tb.putcol('MODEL_DATA', model)
+

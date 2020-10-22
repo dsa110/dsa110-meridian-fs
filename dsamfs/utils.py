@@ -9,19 +9,19 @@ by the DSA-110 correlator
 
 import os
 import socket
-import yaml
 from datetime import datetime
-import numpy as np
 from collections import OrderedDict
+import numpy as np
+import yaml
 import astropy.units as u
-import dsacalib.constants as ct
-from dsacalib.fringestopping import calc_uvw
-from dsamfs.fringestopping import generate_fringestopping_table
-from dsamfs.fringestopping import zenith_visibility_model
 from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
 import casatools as cc
 from dsautils import dsa_store
+import dsacalib.constants as ct
+from dsacalib.fringestopping import calc_uvw
+from dsamfs.fringestopping import generate_fringestopping_table
+from dsamfs.fringestopping import zenith_visibility_model
 
 def get_time():
     """
@@ -289,7 +289,7 @@ def parse_param_file(param_file):
     ch0 = params['ch0'][hname]
     nchan_spw = params['nchan_spw']
     fobs = fobs[ch0:ch0+nchan_spw]
-    
+
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
