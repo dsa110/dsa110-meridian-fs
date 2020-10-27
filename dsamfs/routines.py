@@ -5,7 +5,6 @@ Dana Simard, dana.simard@astro.caltech.edu, 2020
 
 import subprocess
 from psrdada import Reader
-from pkg_resources import resource_filename
 import dsautils.dsa_syslog as dsl
 import dsamfs.utils as pu
 from dsamfs.io import dada_to_uvh5
@@ -13,8 +12,6 @@ from dsamfs.io import dada_to_uvh5
 logger = dsl.DsaSyslogger()
 logger.subsystem("software")
 logger.app("dsamfs")
-
-DEFAULT_PARAMS = resource_filename('dsamfs', 'data/dsa_parameters.json')
 
 def run_fringestopping(param_file, header_file=None, output_dir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
@@ -25,10 +22,8 @@ def run_fringestopping(param_file, header_file=None, output_dir=None):
         meridian_fringestopping_parameters.py in the package directory.
     """
     # Read in parameter file
-    if param_file is None:
-        param_file = DEFAULT_PARAMS
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
-        samples_per_frame_out, nint,nfreq_int, antenna_order, pt_dec, tsamp = \
+        samples_per_frame_out, nint,nfreq_int, antenna_order, pt_dec, tsamp, fringestop = \
         pu.parse_param_file(param_file)
     nbls = (nant*(nant+1))//2
     key = int('0x{0}'.format(key_string), 16)
@@ -71,6 +66,8 @@ def run_fringestopping(param_file, header_file=None, output_dir=None):
     # Get the visibility model
     vis_model = pu.load_visibility_model(fs_table, blen, nant, nint, fobs,
                                          pt_dec, tsamp)
+    if not fringestop:
+        vis_model = np.ones(vis_model.shape, vis_model.dtype)
 
     # Read in psrdada buffer, fringestop, and write to uvh5
     dada_to_uvh5(reader, output_dir, nbls, nchan, npol, nint, nfreq_int,

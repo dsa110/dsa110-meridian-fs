@@ -260,7 +260,7 @@ def parse_param_file(param_file):
     Parameters
     ----------
     param_file : str
-        The full path to the json parameter file.
+        The full path to the yaml parameter file.
     """
     fhand = open(param_file)
     params = yaml.safe_load(fhand)
