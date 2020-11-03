@@ -17,7 +17,7 @@ def test_gentable(tmpdir):
     df_bls = utils.get_baselines(antenna_order, autocorrs=True, casa_order=False)
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
     fringestopping.generate_fringestopping_table(
-        blen, pt_dec, nint, tsamp, outname=fstable)
+        blen, pt_dec, nint, tsamp, antenna_order, outname=fstable)
     assert os.path.exists(fstable)
 
 def test_write_fs_delay_table(tmpdir):

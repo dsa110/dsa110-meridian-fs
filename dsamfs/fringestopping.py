@@ -96,6 +96,7 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
 
 
 def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
+                                  antenna_order,
                                   outname='fringestopping_table',
                                   mjd0=58849.0):
     """Generates a table of the w vectors towards a source.
@@ -138,7 +139,7 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     if os.path.exists(outname):
         os.unlink(outname)
     np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,
-             bwref=bwref)
+             bwref=bwref, antenna_order=antenna_order)
 
 def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     """Creates the visibility model from the fringestopping table.

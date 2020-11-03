@@ -65,7 +65,7 @@ def run_fringestopping(param_file, header_file=None, output_dir=None):
 
     # Get the visibility model
     vis_model = pu.load_visibility_model(fs_table, blen, nant, nint, fobs,
-                                         pt_dec, tsamp)
+                                         pt_dec, tsamp, antenna_order)
     if not fringestop:
         vis_model = np.ones(vis_model.shape, vis_model.dtype)
 

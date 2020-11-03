@@ -136,7 +136,7 @@ def integrate(data, nint):
     return data
 
 def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
-                          tsamp, ant_delay_tbl=None):
+                          tsamp, antenna_order, ant_delay_tbl=None):
     """
     Load the visibility model for fringestopping.
 
@@ -166,9 +166,11 @@ def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
         assert fs_data['bw'].shape == (nint, blen.shape[0])
         assert np.abs(fs_data['dec_rad']-pt_dec) < 1e-6
         assert np.abs(fs_data['tsamp_s']-tsamp) < 1e-6
+        assert np.all(fs_data['antenna_order']==antenna_order)
     except (FileNotFoundError, AssertionError):
         print('Creating new fringestopping table.')
         generate_fringestopping_table(blen, pt_dec, nint, tsamp,
+                                      antenna_order,
                                       outname=fs_table)
         os.link(fs_table,
                 '{0}_{1}.npz'.format(
