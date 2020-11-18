@@ -14,6 +14,7 @@ if len(sys.argv) > 1:
 else:
     PARAM_FILE = None
 if len(sys.argv) > 2:
+
     OUTDIR = sys.argv[2]
 else:
     OUTDIR = None
