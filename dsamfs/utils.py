@@ -27,8 +27,15 @@ def get_time():
     """
     Gets the start time of the first spectrum from etcd.
     """
-    d = dsa_store.DsaStore()
-    return d.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']+0.65536/86400.
+
+    try:
+        d = dsa_store.DsaStore()
+        ret_time = d.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']+float(d.get_dict('/mon/snap/1/utc_start')['utc_start'])*4.*8.192e-6/86400.
+    except:
+        ret_time = 55000.0
+
+    return ret_time
+        
 
 def read_header(reader):
     """
