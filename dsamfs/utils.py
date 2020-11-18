@@ -174,7 +174,7 @@ def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
         assert np.abs(fs_data['dec_rad']-pt_dec) < 1e-6
         assert np.abs(fs_data['tsamp_s']-tsamp) < 1e-6
         assert np.all(fs_data['antenna_order']==antenna_order)
-    except (FileNotFoundError, AssertionError):
+    except (FileNotFoundError, AssertionError, KeyError):
         print('Creating new fringestopping table.')
         generate_fringestopping_table(blen, pt_dec, nint, tsamp,
                                       antenna_order,
