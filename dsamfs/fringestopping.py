@@ -7,6 +7,7 @@ Casa-based routines for calculating and applying fringe-stopping phases
 to visibilities
 """
 import sys
+import os
 import numpy as np
 import scipy # pylint: disable=unused-import
 import casatools as cc
@@ -65,36 +66,37 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
         direction_set = False
     else:
         if (src_epoch == 'HADEC') and (nblt > 1):
-            raise TypeError('HA and DEC must be specified at each baseline-time in '
-                           'tobs.')
+            raise TypeError('HA and DEC must be specified at each '
+                           'baseline-time in tobs.')
         me.doframe(me.direction(src_epoch,
                                 qa.quantity(src_lon.to_value(u.deg), 'deg'),
                                 qa.quantity(src_lat.to_value(u.deg), 'deg')))
         direction_set = True
     contains_nans = False
     for i in range(nblt):
-         me.doframe(me.epoch('UTC', qa.quantity(tobs[i], 'd')))
-         if not direction_set:
-             me.doframe(me.direction(src_epoch,
-                                     qa.quantity(src_lon[i].to_value(u.deg),
-                                                 'deg'),
-                                     qa.quantity(src_lat[i].to_value(u.deg),
-                                                 'deg')))
-         bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
-                           qa.quantity(blen[i, 1], 'm'),
-                           qa.quantity(blen[i, 2], 'm'))
-          # Get the uvw coordinates
-         try:
-             buvw[i, :] = me.touvw(bl)[1]['value']
-         except KeyError:
-             contains_nans = True
-             buvw[i, :] = np.ones(3)*np.nan
+        me.doframe(me.epoch('UTC', qa.quantity(tobs[i], 'd')))
+        if not direction_set:
+            me.doframe(me.direction(src_epoch,
+                                    qa.quantity(src_lon[i].to_value(u.deg),
+                                                'deg'),
+                                    qa.quantity(src_lat[i].to_value(u.deg),
+                                                'deg')))
+        bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
+                          qa.quantity(blen[i, 1], 'm'),
+                          qa.quantity(blen[i, 2], 'm'))
+        # Get the uvw coordinates
+        try:
+            buvw[i, :] = me.touvw(bl)[1]['value']
+        except KeyError:
+            contains_nans = True
+            buvw[i, :] = np.ones(3)*np.nan
     if contains_nans:
         print('Warning: some solutions not found for u, v, w coordinates')
     return buvw
 
 
 def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
+                                  antenna_order,
                                   outname='fringestopping_table',
                                   mjd0=58849.0):
     """Generates a table of the w vectors towards a source.
@@ -134,8 +136,10 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     bw = bw-bwref[:, np.newaxis]
     bw = bw.T
     bwref = bwref.T
+    if os.path.exists(outname):
+        os.unlink(outname)
     np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,
-             bwref=bwref)
+             bwref=bwref, antenna_order=antenna_order)
 
 def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     """Creates the visibility model from the fringestopping table.

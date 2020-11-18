@@ -9,19 +9,19 @@ by the DSA-110 correlator
 
 import os
 import socket
-import yaml
 from datetime import datetime
-import numpy as np
 from collections import OrderedDict
+import numpy as np
+import yaml
 import astropy.units as u
-import dsacalib.constants as ct
-from dsacalib.fringestopping import calc_uvw
-from dsamfs.fringestopping import generate_fringestopping_table
-from dsamfs.fringestopping import zenith_visibility_model
 from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
 import casatools as cc
 from dsautils import dsa_store
+import dsacalib.constants as ct
+from dsacalib.fringestopping import calc_uvw
+from dsamfs.fringestopping import generate_fringestopping_table
+from dsamfs.fringestopping import zenith_visibility_model
 
 def get_time():
     """
@@ -136,7 +136,7 @@ def integrate(data, nint):
     return data
 
 def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
-                          tsamp, ant_delay_tbl=None):
+                          tsamp, antenna_order, ant_delay_tbl=None):
     """
     Load the visibility model for fringestopping.
 
@@ -166,9 +166,11 @@ def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
         assert fs_data['bw'].shape == (nint, blen.shape[0])
         assert np.abs(fs_data['dec_rad']-pt_dec) < 1e-6
         assert np.abs(fs_data['tsamp_s']-tsamp) < 1e-6
+        assert np.all(fs_data['antenna_order']==antenna_order)
     except (FileNotFoundError, AssertionError):
         print('Creating new fringestopping table.')
         generate_fringestopping_table(blen, pt_dec, nint, tsamp,
+                                      antenna_order,
                                       outname=fs_table)
         os.link(fs_table,
                 '{0}_{1}.npz'.format(
@@ -260,7 +262,7 @@ def parse_param_file(param_file):
     Parameters
     ----------
     param_file : str
-        The full path to the json parameter file.
+        The full path to the yaml parameter file.
     """
     fhand = open(param_file)
     params = yaml.safe_load(fhand)
@@ -273,6 +275,7 @@ def parse_param_file(param_file):
     samples_per_frame = params['samples_per_frame']
     samples_per_frame_out = params['samples_per_frame_out']
     nint = params['nint']
+    fringestop = params['fringestop']
     nfreq_int = params['nfreq_int']
     ant_od = OrderedDict(sorted(params['antenna_order'].items()))
     antenna_order = list(ant_od.values())
@@ -288,10 +291,10 @@ def parse_param_file(param_file):
     ch0 = params['ch0'][hname]
     nchan_spw = params['nchan_spw']
     fobs = fobs[ch0:ch0+nchan_spw]
-    
+
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
-        nfreq_int, antenna_order, pt_dec, tsamp
+        nfreq_int, antenna_order, pt_dec, tsamp, fringestop

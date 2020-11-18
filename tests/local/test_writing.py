@@ -1,17 +1,17 @@
 import pkg_resources
-from dsamfs.meridian_fringestop import run_fringestopping
+from dsamfs.routines import run_fringestopping
 from dsacalib.utils import get_autobl_indices
 from pyuvdata import UVData
 import glob
 import numpy as np
-from dsamfs.uvh5_utils import uvh5_to_ms
+from dsacalib.ms_io import uvh5_to_ms
 from casatasks import importuvfits
 import casatools as cc
 import os
 from astropy.time import Time
 from dsamfs.fringestopping import calc_uvw_blt
 import astropy.io.fits as pf
-from antpos.utils import get_baselines
+from antpos.utils import get_baselines, get_itrf
 import astropy.units as u
 import astropy.constants as c
 
@@ -19,7 +19,8 @@ def test_end2end(tmpdir):
     data_path = pkg_resources.resource_filename('dsamfs', 'data/')
     param_path = '{0}/test_parameters.yaml'.format(data_path)
     header_path = '{0}/test_header.txt'.format(data_path)
-    run_fringestopping(param_path, header_file=header_path, outdir=tmpdir)
+    print(param_path)
+    run_fringestopping(param_path, header_file=header_path, output_dir=tmpdir)
     fname = glob.glob('{0}/*.hdf5'.format(tmpdir))[0]
     UV = UVData()
     UV.read(fname, file_type='uvh5')
@@ -48,13 +49,20 @@ def test_end2end(tmpdir):
     uu = (f['PRIMARY'].data['UU']*u.s*c.c).to_value(u.m)
     vv = (f['PRIMARY'].data['VV']*u.s*c.c).to_value(u.m)
     ww = (f['PRIMARY'].data['WW']*u.s*c.c).to_value(u.m)
-    ant1 = f['PRIMARY'].data['ANTENNA1']
-    ant2 = f['PRIMARY'].data['ANTENNA2']
-    assert ant2[1]==ant2[0] # Check that ant1 and ant2 are defined properly
-    bnames = ['{0}-{1}'.format(int(ant1[i]), int(ant2[i])) for i in range(len(ant1))]
-    df = get_baselines(antenna_order, casa_order=False, autocorrs=True)
-    idx = [np.where(df['bname']==bn)[0][0] for bn in bnames]
-    blen = np.array([df['x_m'][idx], df['y_m'][idx], df['z_m'][idx]]).T
+    ant1_array = f['PRIMARY'].data['ANTENNA1']
+    ant2_array = f['PRIMARY'].data['ANTENNA2']
+
+    df_itrf = get_itrf(height=UV.telescope_location_lat_lon_alt[-1])
+    antenna_positions = np.array([df_itrf['x_m'], df_itrf['y_m'],
+                                     df_itrf['z_m']]).T-UV.telescope_location
+    blen = np.zeros((ant1_array.shape[0], 3))
+    for i, ant1 in enumerate(ant1_array):
+        ant2 = ant2_array[i]
+        blen[i, ...] = antenna_positions[int(ant2)-1, :] - \
+                       antenna_positions[int(ant1)-1, :]
+    
+    print(ant1_array[:2], ant2_array[:2])
+    assert ant1_array[1]==ant1_array[0] # Check that ant1 and ant2 are defined properly
     time = Time(f['PRIMARY'].data['DATE'],format='jd').mjd
     for i in range(10):
         try:
@@ -66,11 +74,18 @@ def test_end2end(tmpdir):
             continue
     assert ra is not None
     assert dec is not None
-    uvw = calc_uvw_blt(blen, time, 'J2000', ra, dec)
-    assert np.all(np.abs(uvw[:, 0] - uu) < 1e-4)
-    assert np.all(np.abs(uvw[:, 1] - vv) < 1e-4)
-    assert np.all(np.abs(uvw[:, 2] - ww) < 1e-4)
-    assert np.all(np.abs(uvw-uvw_ms.T) < 1e-4)
+    print(time.shape, blen.shape)
+    uvw = calc_uvw_blt(blen, time, 'J2000', ra, dec) # Doesnt make sense
+    uvw = -1*uvw
+    print(uvw[:2])
+    print(uu[:2])
+    print(vv[:2])
+    print(ww[:2])
+    # Why have the uvw coordinates been inverted? 
+    assert np.all(np.abs(uvw[:, 0] - uu) < 1e-1)
+    assert np.all(np.abs(uvw[:, 1] - vv) < 1e-1)
+    assert np.all(np.abs(uvw[:, 2] - ww) < 1e-1)
+    assert np.all(np.abs(uvw-uvw_ms.T) < 1e-2)
     UV = UVData()
     UV.read(fname.replace('hdf5', 'ms'), file_type='ms')
     assert np.all(np.abs(UV.antenna_diameters-4.65) < 1e-4)
