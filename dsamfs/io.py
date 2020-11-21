@@ -321,17 +321,20 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                 idx_frame_file += 1
                 print('Integration {0} done'.format(idx_frame_out))
         os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))
-        etcd.put_dict(
-            '/cmd/cal',
-            {
-                'cmd': 'rsync',
-                'val':
+        try:
+            etcd.put_dict(
+                '/cmd/cal',
                 {
-                    'hostname': hostname,
-                    'filename': '{0}.hdf5'.format(fout)
+                    'cmd': 'rsync',
+                    'val':
+                    {
+                        'hostname': hostname,
+                        'filename': '{0}.hdf5'.format(fout)
+                    }
                 }
-            }
-        )
+            )
+        except:
+            logger.info('Could not reach ETCD to transfer {0} from {1}'.format(fout, hostname))
     try:
         reader.disconnect()
     except PSRDadaError:
