@@ -9,102 +9,23 @@ Dana Simard, dana.simard@astro.caltech.edu, 2020
 from datetime import datetime
 import os
 import traceback
+import socket
 import numpy as np
 import h5py
 import astropy.units as u
 from psrdada.exceptions import PSRDadaError
 from antpos.utils import get_itrf
 import dsautils.dsa_syslog as dsl
+import dsautils.dsa_store as ds
 import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
 
+etcd = ds.DsaStore()
+
 logger = dsl.DsaSyslogger()
 logger.subsystem("software")
 logger.app("dsamfs")
-
-def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
-                 samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
-                 fs_table, tsamp, bname, uvw, fobs, vis_model, test):
-    """
-    Reads dada buffer and writes to uvh5 file.
-    """
-    if nfreq_int > 1:
-        assert nchan%nfreq_int == 0, ("Number of channels must be an integer "
-                                      "number of output channels.")
-        fobs = np.median(fobs.reshape(-1, nfreq_int), axis=1)
-        nchan = len(fobs)
-
-    nans = False
-    idx_frame_out = 0 # total number of fsed frames, for timekeeping
-    max_frames_per_file = int(np.ceil(60*60*sample_rate_out))
-    while not nans:
-        now = datetime.utcnow()
-        fout = now.strftime("%Y-%m-%dT%H:%M:%S")
-        if outdir is not None:
-            fout = '{0}/{1}'.format(outdir, fout)
-        print('Opening output file {0}.hdf5'.format(fout))
-        with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
-            initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
-                                 fobs, fs_table)
-
-            idx_frame_file = 0 # number of fsed frames write to curent file
-            while (idx_frame_file < max_frames_per_file) and (not nans):
-                data_in = np.ones(
-                    (samples_per_frame_out*nint, nbls, nchan*nfreq_int, npol),
-                    dtype=np.complex64)*np.nan
-                for i in range(data_in.shape[0]):
-                    try:
-                        assert reader.isConnected
-                        data_in[i, ...] = pu.read_buffer(
-                            reader, nbls, nchan*nfreq_int, npol)
-                    except (AssertionError, ValueError, PSRDadaError) as e:
-                        print('Last integration has {0} timesamples'.format(i))
-                        logger.info('Disconnected from buffer with message'
-                                    '{0}:\n{1}'.
-                                    format(type(e).__name__, ''.join(
-                                        traceback.format_tb(e.__traceback__))))
-                        nans = True
-                        break
-
-                if idx_frame_out == 0:
-                    if test:
-                        tstart = 59000.5
-                    else:
-                        tstart = pu.get_time()
-                    tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY+2400000.5
-
-                data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
-                t, tstart = pu.update_time(tstart, samples_per_frame_out,
-                                           sample_rate_out)
-                if nfreq_int > 1:
-                    if not nans:
-                        data = np.mean(data.reshape(
-                            data.shape[0], data.shape[1], nchan, nfreq_int,
-                            npol), axis=3)
-                        nsamples = np.mean(nsamples.reshape(
-                            nsamples.shape[0], nsamples.shape[1], nchan,
-                            nfreq_int, npol), axis=3)
-                    else:
-                        data = np.nanmean(
-                            data.reshape(data.shape[0], data.shape[1], nchan,
-                                         nfreq_int, npol),
-                            axis=3
-                        )
-                        nsamples = np.nanmean(nsamples.reshape(
-                            nsamples.shape[0], nsamples.shape[1], nchan,
-                            nfreq_int, npol), axis=3)
-
-                update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
-
-                idx_frame_out += 1
-                idx_frame_file += 1
-                print('Integration {0} done'.format(idx_frame_out))
-        os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))
-    try:
-        reader.disconnect()
-    except PSRDadaError:
-        pass
 
 def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
                          fs_table=None):
@@ -338,6 +259,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
     nans = False
     idx_frame_out = 0 # total number of fsed frames, for timekeeping
     max_frames_per_file = int(np.ceil(15*60*sample_rate_out))
+    hostname = socket.gethostname()
     while not nans:
         now = datetime.utcnow()
         fout = now.strftime("%Y-%m-%dT%H:%M:%S")
@@ -399,183 +321,18 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                 idx_frame_file += 1
                 print('Integration {0} done'.format(idx_frame_out))
         os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))
+        etcd.put_dict(
+            '/cmd/cal',
+            {
+                'cmd': 'rsync',
+                'val':
+                {
+                    'hostname': hostname,
+                    'filename': '{0}.hdf5'.format(fout)
+                }
+            }
+        )
     try:
         reader.disconnect()
     except PSRDadaError:
         pass
-
-def uvh5_to_ms(fname, msname, ra=None, dec=None, dt=None, antenna_list=None,
-               flux=None):
-    """
-    Converts a uvh5 data to a uvfits file.
-
-    Parameters
-    ----------
-    fname : str
-        The full path to the uvh5 data file.
-    ra : astropy quantity
-        The RA at which to phase the data. If None, will phase at the meridian
-        of the center of the uvh5 file.
-    dec : astropy quantity
-        The DEC at which to phase the data. If None, will phase at the pointing
-        declination.
-    dt : astropy quantity
-        Duration of data to extract. If None, will extract the entire file.
-    """
-    zenith_dec = 0.6503903199825691*u.rad
-    UV = UVData()
-    # This next section contains the list 
-    if dt is not None:
-        if isinstance(fname, list):
-            fname_init = fname[0]
-        else:
-            fname_init = fname
-        if antenna_list is not None:
-            UV.read(fname_init, file_type='uvh5', antenna_names=antenna_list)
-        else:
-            UV.read(fname_init, file_type='uvh5')
-        time = Time(UV.time_array, format='jd')
-
-        pt_dec = UV.extra_keywords['phase_center_dec']*u.rad
-        if ra is None:
-            ra = UV.lst_array[UV.Nblts//2]*u.rad
-        if dec is None:
-            dec = pt_dec
-
-        lst_min = (ra - (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2
-                  ).to_value(u.rad)%(2*np.pi)
-        lst_max = (ra + (dt*2*np.pi*u.rad/(ct.SECONDS_PER_SIDEREAL_DAY*u.s))/2
-                  ).to_value(u.rad)%(2*np.pi)
-        if lst_min < lst_max:
-            idx_to_extract = np.where((UV.lst_array >= lst_min) &
-                                      (UV.lst_array <= lst_max))[0]
-        else:
-            idx_to_extract = np.where((UV.lst_array >= lst_min) |
-                                      (UV.lst_array <= lst_max))[0]
-        tmin = time[min(idx_to_extract)]
-        tmax = time[max(idx_to_extract)]
-        UV = UVData()
-        if antenna_list is not None:
-            UV.read(fname, file_type='uvh5', antenna_names=antenna_list,
-                    time_range=[tmin.jd, tmax.jd])
-        else:
-            UV.read(fname, file_type='uvh5', time_range=[tmin.jd, tmax.jd])
-        time = Time(UV.time_array, format='jd')
-    else:
-        if antenna_list is not None:
-            UV.read(fname, file_type='uvh5', antenna_names=antenna_list)
-        else:
-            UV.read(fname, file_type='uvh5')
-        time = Time(UV.time_array, format='jd')
-
-        pt_dec = UV.extra_keywords['phase_center_dec']*u.rad
-        if ra is None:
-            ra = UV.lst_array[UV.Nblts//2]*u.rad
-        if dec is None:
-            dec = pt_dec
-
-    lamb = c.c/(UV.freq_array*u.Hz)
-    # Get the baselines in itrf coordinates
-    ant1, _ant2 = UV.baseline_to_antnums(UV.baseline_array)
-    antenna_order = [int(UV.antenna_names[np.where(
-        UV.antenna_numbers==ant1[abi])[0][0]]) for abi in
-                     get_autobl_indices(UV.Nants_data, casa=False)]
-    df = get_baselines(antenna_order, casa_order=False, autocorrs=True)
-    df_itrf = get_itrf()
-    blen = np.array([df['x_m'], df['y_m'], df['z_m']]).T
-    blen = np.tile(blen[np.newaxis, ...], (UV.Ntimes, 1, 1)).reshape(-1, 3)
-    UV.antenna_positions = np.array([df_itrf['x_m'], df_itrf['y_m'],
-                                     df_itrf['z_m']]).T-UV.telescope_location
-    uvw_m = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
-                         np.zeros(UV.Nbls)*u.rad, np.ones(UV.Nbls)*pt_dec)
-    uvw_z = calc_uvw_blt(blen[:UV.Nbls], time[:UV.Nbls].mjd, 'HADEC',
-                         np.zeros(UV.Nbls)*u.rad, np.ones(UV.Nbls)*zenith_dec)
-    dw = (uvw_z[:, -1] - uvw_m[:, -1])*u.m
-    # Not sure about sign - double check
-    phase_model = np.exp((2j*np.pi/lamb*dw[:, np.newaxis, np.newaxis])
-                         .to_value(u.dimensionless_unscaled))
-    UV.uvw_array = np.tile(uvw_z[np.newaxis, :, :], (UV.Ntimes, 1, 1)
-                       ).reshape(-1, 3)
-    UV.data_array = (UV.data_array.reshape(UV.Ntimes, UV.Nbls, UV.Nspws,
-                                           UV.Nfreqs, UV.Npols)
-                     /phase_model[np.newaxis, ..., np.newaxis]).reshape(
-        UV.Nblts, UV.Nspws, UV.Nfreqs, UV.Npols)
-
-    UV.phase(ra.to_value(u.rad), dec.to_value(u.rad), use_ant_pos=False)
-    # Below is the manual calibration which can be used instead if needed.
-    #uvw = calc_uvw_blt(blen, time.mjd, 'RADEC', ra.to(u.rad), dec.to(u.rad))
-    #dw = (uvw[:, -1] - np.tile(uvw_m[np.newaxis, :, -1], (UV.Ntimes, 1)
-    #                          ).reshape(-1))*u.m
-    #phase_model = np.exp((2j*np.pi/lamb*dw[:, np.newaxis, np.newaxis])
-    #                      .to_value(u.dimensionless_unscaled))
-    #UV.uvw_array = uvw
-    #UV.data_array = UV.data_array/phase_model[..., np.newaxis]
-    #UV.phase_type = 'phased'
-    #UV.phase_center_dec = dec.to_value(u.rad)
-    #UV.phase_center_ra = ra.to_value(u.rad)
-    #UV.phase_center_epoch = 2000.
-    # Look for missing channels
-    freq = UV.freq_array.squeeze()
-    # The channels may have been reordered by pyuvdata so check that the
-    # parameter UV.channel_width makes sense now.
-    ascending = np.median(np.diff(freq)) > 0
-    if ascending:
-        assert np.all(np.diff(freq) > 0)
-        if UV.channel_width < 0:
-            UV.channel_width *= -1
-    else:
-        assert np.all(np.diff(freq) < 0)
-        if UV.channel_width > 0:
-            UV.channel_width *= -1
-    # Are there missing channels?
-    if not np.all(np.diff(freq)-UV.channel_width < 1e-5):
-        # There are missing channels!
-        nfreq = int(np.rint(np.abs(freq[-1]-freq[0])/UV.channel_width+1))
-        freq_out = freq[0] + np.arange(nfreq)*UV.channel_width
-        existing_idxs = np.rint((freq-freq[0])/UV.channel_width).astype(int)
-        data_out = np.zeros((UV.Nblts, UV.Nspws, nfreq, UV.Npols),
-                            dtype=UV.data_array.dtype)
-        nsample_out = np.zeros((UV.Nblts, UV.Nspws, nfreq, UV.Npols),
-                                dtype=UV.nsample_array.dtype)
-        flag_out = np.zeros((UV.Nblts, UV.Nspws, nfreq, UV.Npols),
-                             dtype=UV.flag_array.dtype)
-        # Ah, fancy indexing, be careful with numpy reshaping bugs!
-        data_out[:, :, existing_idxs, :] = UV.data_array
-        nsample_out[:, :, existing_idxs, :] = UV.nsample_array
-        flag_out[:, :, existing_idxs, :] = UV.flag_array
-        # Now write everything
-        UV.Nfreqs = nfreq
-        UV.freq_array = freq_out[np.newaxis, :]
-        UV.data_array = data_out
-        UV.nsample_array = nsample_out
-        UV.flag_array = flag_out
-
-    if os.path.exists('{0}.fits'.format(msname)):
-        os.remove('{0}.fits'.format(msname))
-
-    UV.write_uvfits('{0}.fits'.format(msname),
-                    spoof_nonessential=True)
-    # Get the model to write to the data
-    if flux is not None:
-        fobs = UV.freq_array.squeeze()/1e9
-        lst = UV.lst_array
-        model = amplitude_sky_model(du.src('cal', ra, dec, flux),
-                                    lst, pt_dec, fobs).T
-        model = np.tile(model[:, :, np.newaxis], (1, 1, UV.Npols))
-    else:
-        model = np.ones((UV.Nblts, UV.Nfreqs, UV.Npols), dtype=np.complex64)
-
-    if os.path.exists('{0}.ms'.format(msname)):
-        shutil.rmtree('{0}.ms'.format(msname))
-    importuvfits('{0}.fits'.format(msname),
-                 '{0}.ms'.format(msname))
-
-    # Changes these to use casacore instead
-    with table('{0}.ms/ANTENNA'.format(msname), readonly=False) as tb:
-        tb.putcol('POSITION',
-              np.array([df_itrf['x_m'], df_itrf['y_m'], df_itrf['z_m']]).T)
-
-    addImagingColumns('{0}.ms'.format(msname))
-    with table('{0}.ms'.format(msname), readonly=False) as tb:
-        tb.putcol('MODEL_DATA', model)
-
