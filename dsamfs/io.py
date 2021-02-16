@@ -309,7 +309,8 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                             nfreq_int, npol), axis=3)
                     else:
                         data = np.nanmean(data.reshape(
-                            data.shape[0], data.shape[1], nchan, nfreq_int, npol),
+                            data.shape[0], data.shape[1], nchan,
+                            nfreq_int, npol),
                                          axis=3)
                         nsamples = np.nanmean(nsamples.reshape(
                             nsamples.shape[0], nsamples.shape[1], nchan,
