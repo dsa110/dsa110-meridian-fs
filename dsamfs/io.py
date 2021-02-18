@@ -124,8 +124,9 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     extra["phase_center_epoch"] = 2000
     if fs_table is not None:
         extra["fs_table"] = np.string_(fs_table)
-        # Should link to a perm vrsn
-
+        extra["applied_delays_ns"] = pu.get_delays(
+            antenna_order, nants_telescope
+        )
     # Data sets
     data.create_dataset(
         "visdata", (0, 1, nfreq, npol), maxshape=(None, 1, nfreq, npol),
