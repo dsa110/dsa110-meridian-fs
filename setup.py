@@ -34,7 +34,7 @@ setup(name='dsa110-meridian-fs',
           "https://github.com/dsa110/dsa110-antpos/tarball/master#egg=dsa110-antpos",
           "https://github.com/dsa110/dsa110-pyutils/tarball/master#egg=dsa110-pyutils",
           "https://casa-pip.nrao.edu/repository/pypi-casa-release/simple",
-          "https://github.com/dsa110/dsa110-calib/master#egg=dsa110-calib",
+          "https://github.com/dsa110/dsa110-calib/main#egg=dsa110-calib",
           ],
       zip_safe=False)
 

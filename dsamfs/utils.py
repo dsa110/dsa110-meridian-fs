@@ -18,10 +18,54 @@ from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
 import casatools as cc
 from dsautils import dsa_store
+import dsautils.dsa_syslog as dsl
 import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
+
+# Logger
+LOGGER = dsl.DsaSyslogger()
+LOGGER.subsystem("software")
+LOGGER.app("dsamfs")
+
+def get_delays(antenna_order, nants):
+    """Gets the delays currently set in the sanps.
+
+    Parameters
+    ----------
+    antenna_order : array
+        The order of antennas in the snaps.
+    nants : int
+        The total number of antennas in the array.
+
+    Returns
+    -------
+    ndarray
+        The delays for each antenna/pol in the array.
+    """
+    delays = np.zeros((nants, 2), dtype=np.int)
+    d = dsa_store.DsaStore()
+    nant_snap = 3
+    nsnaps = len(antenna_order)//nant_snap
+    nant_lastsnap = len(antenna_order)%nant_snap
+    if nant_lastsnap != 0:
+        nsnaps += 1
+    else:
+        nant_lastsnap = nant_snap
+    for i in range(0, nsnaps):
+        try:
+            snap_delays = np.array(
+                d.get_dict(
+                    '/mon/snap/{0}/delays'.format(i+1)
+                )['delays']
+            )*2
+            snap_delays = snap_delays.reshape(3, 2)[
+                :nant_snap if i<nsnaps-1 else nant_lastsnap, :]
+            delays[(antenna_order-1)[i*3:(i+1)*3], :] = snap_delays
+        except AttributeError:
+            LOGGER.error('delays not set for snap{0}'.format(i+1))
+    return delays
 
 def get_time():
     """

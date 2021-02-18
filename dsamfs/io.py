@@ -124,8 +124,10 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     extra["phase_center_epoch"] = 2000
     if fs_table is not None:
         extra["fs_table"] = np.string_(fs_table)
-        # Should link to a perm vrsn
-
+        snapdelays = pu.get_delays(np.array(antenna_order), nants_telescope)
+        extra["applied_delays_ns"] = np.string_(
+            ' '.join([str(d) for d in snapdelays.flatten()])
+        )
     # Data sets
     data.create_dataset(
         "visdata", (0, 1, nfreq, npol), maxshape=(None, 1, nfreq, npol),
@@ -309,7 +311,8 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                             nfreq_int, npol), axis=3)
                     else:
                         data = np.nanmean(data.reshape(
-                            data.shape[0], data.shape[1], nchan, nfreq_int, npol),
+                            data.shape[0], data.shape[1], nchan,
+                            nfreq_int, npol),
                                          axis=3)
                         nsamples = np.nanmean(nsamples.reshape(
                             nsamples.shape[0], nsamples.shape[1], nchan,
