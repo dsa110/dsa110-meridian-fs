@@ -125,7 +125,7 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     if fs_table is not None:
         extra["fs_table"] = np.string_(fs_table)
         extra["applied_delays_ns"] = pu.get_delays(
-            antenna_order, nants_telescope
+            np.array(antenna_order), nants_telescope
         )
     # Data sets
     data.create_dataset(
