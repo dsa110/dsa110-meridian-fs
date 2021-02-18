@@ -39,10 +39,9 @@ install:
    - cd pyuvdata
    - pip install .
    - cd ..
-   - python setup.py install
-   - git clone https://github.com/dsa110/dsa110-meridian-fs
-   - cd dsa110-meridian-fs
-   - python setup.py install
+   - git clone https://github.com/dsa110/dsa110-calib
+   - cd dsa110-calib
+   - pip install .
    - cd ..
    - python setup.py develop --no-deps
 
