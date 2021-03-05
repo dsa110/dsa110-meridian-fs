@@ -12,17 +12,21 @@ import socket
 from datetime import datetime
 from collections import OrderedDict
 import numpy as np
-import yaml
+# import yaml
 import astropy.units as u
 from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
 import casatools as cc
 from dsautils import dsa_store
 import dsautils.dsa_syslog as dsl
+import dsautils.cnf as cnf
 import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
+my_cnf = cnf.Conf()
+corr_cnf = my_cnf.get('corr')
+mfs_cnf = my_cnf.get('fringe')
 
 # Logger
 LOGGER = dsl.DsaSyslogger()
@@ -74,12 +78,13 @@ def get_time():
 
     try:
         d = dsa_store.DsaStore()
-        ret_time = d.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']+float(d.get_dict('/mon/snap/1/utc_start')['utc_start'])*4.*8.192e-6/86400.
+        ret_time = (d.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
+                    +float(d.get_dict('/mon/snap/1/utc_start')['utc_start'])
+                    *4.*8.192e-6/86400.)
     except:
         ret_time = 55000.0
 
     return ret_time
-        
 
 def read_header(reader):
     """
@@ -307,7 +312,7 @@ def baseline_uvw(antenna_order, pt_dec, autocorrs=True, casa_order=False):
     uvw = np.array([bu, bv, bw]).T
     return bname, blen, uvw
 
-def parse_param_file(param_file):
+def parse_params():
     """Parses parameter file.
 
     Parameters
@@ -315,32 +320,32 @@ def parse_param_file(param_file):
     param_file : str
         The full path to the yaml parameter file.
     """
-    fhand = open(param_file)
-    params = yaml.safe_load(fhand)
-    fhand.close()
-    test = params['test']
-    key_string = params['key_string']
-    nant = params['nant']
-    nchan = params['nchan']
-    npol = params['npol']
-    samples_per_frame = params['samples_per_frame']
-    samples_per_frame_out = params['samples_per_frame_out']
-    nint = params['nint']
-    fringestop = params['fringestop']
-    nfreq_int = params['nfreq_int']
-    ant_od = OrderedDict(sorted(params['antenna_order'].items()))
+    # fhand = open(param_file)
+    # params = yaml.safe_load(fhand)
+    # fhand.close()
+    test = mfs_cnf['test']
+    key_string = mfs_cnf['key_string']
+    nant = corr_cnf['nant']
+    nchan = corr_cnf['nchan']
+    npol = corr_cnf['npol']
+    samples_per_frame = mfs_cnf['samples_per_frame']
+    samples_per_frame_out = mfs_cnf['samples_per_frame_out']
+    nint = mfs_cnf['nint']
+    fringestop = mfs_cnf['fringestop']
+    nfreq_int = mfs_cnf['nfreq_int']
+    ant_od = OrderedDict(sorted(corr_cnf['antenna_order'].items()))
     antenna_order = list(ant_od.values())
-    dfreq = params['bw_GHz']/nchan
-    if params['chan_ascending']:
-        fobs = params['f0_GHz']+np.arange(nchan)*dfreq
+    dfreq = corr_cnf['bw_GHz']/nchan
+    if corr_cnf['chan_ascending']:
+        fobs = corr_cnf['f0_GHz']+np.arange(nchan)*dfreq
     else:
-        fobs = params['f0_GHz']-np.arange(nchan)*dfreq
-    pt_dec = params['pt_dec'] # in radians
-    tsamp = params['tsamp'] # in seconds
+        fobs = corr_cnf['f0_GHz']-np.arange(nchan)*dfreq
+    pt_dec = corr_cnf['pt_dec'] # in radians
+    tsamp = corr_cnf['tsamp'] # in seconds
 
     hname = socket.gethostname()
-    ch0 = params['ch0'][hname]
-    nchan_spw = params['nchan_spw']
+    ch0 = corr_cnf['ch0'][hname]
+    nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0+nchan_spw]
 
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \

@@ -4,6 +4,7 @@ Dana Simard, dana.simard@astro.caltech.edu, 2020
 """
 
 import subprocess
+import numpy as np
 from psrdada import Reader
 import dsautils.dsa_syslog as dsl
 import dsamfs.utils as pu
@@ -13,7 +14,7 @@ logger = dsl.DsaSyslogger()
 logger.subsystem("software")
 logger.app("dsamfs")
 
-def run_fringestopping(param_file, header_file=None, output_dir=None):
+def run_fringestopping(header_file=None, output_dir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
     ----------
@@ -24,7 +25,7 @@ def run_fringestopping(param_file, header_file=None, output_dir=None):
     # Read in parameter file
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
         samples_per_frame_out, nint,nfreq_int, antenna_order, pt_dec, tsamp, fringestop = \
-        pu.parse_param_file(param_file)
+        pu.parse_params()
     nbls = (nant*(nant+1))//2
     key = int('0x{0}'.format(key_string), 16)
 
