@@ -43,6 +43,7 @@ nchan_spw: 384
 ch0:
   dsaenv01: 3400
   corr22: 3400
+  corr21: 3400
   corr01: 1024
   corr02: 1408
   corr03: 1792
