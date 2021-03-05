@@ -12,7 +12,7 @@ import socket
 from datetime import datetime
 from collections import OrderedDict
 import numpy as np
-# import yaml
+import yaml
 import astropy.units as u
 from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
@@ -24,9 +24,9 @@ import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
-my_cnf = cnf.Conf()
-corr_cnf = my_cnf.get('corr')
-mfs_cnf = my_cnf.get('fringe')
+MY_CNF = cnf.Conf()
+CORR_CNF = MY_CNF.get('corr')
+MFS_CNF = MY_CNF.get('fringe')
 
 # Logger
 LOGGER = dsl.DsaSyslogger()
@@ -312,7 +312,7 @@ def baseline_uvw(antenna_order, pt_dec, autocorrs=True, casa_order=False):
     uvw = np.array([bu, bv, bw]).T
     return bname, blen, uvw
 
-def parse_params():
+def parse_params(param_file=None):
     """Parses parameter file.
 
     Parameters
@@ -320,9 +320,14 @@ def parse_params():
     param_file : str
         The full path to the yaml parameter file.
     """
-    # fhand = open(param_file)
-    # params = yaml.safe_load(fhand)
-    # fhand.close()
+    if param_file is not None:
+        fhand = open(param_file)
+        corr_cnf = yaml.safe_load(fhand)
+        mfs_cnf = corr_cnf
+        fhand.close()
+    else:
+        corr_cnf = CORR_CNF
+        mfs_cnf = MFS_CNF
     test = mfs_cnf['test']
     key_string = mfs_cnf['key_string']
     nant = corr_cnf['nant']
@@ -344,7 +349,11 @@ def parse_params():
     tsamp = corr_cnf['tsamp'] # in seconds
 
     hname = socket.gethostname()
-    ch0 = corr_cnf['ch0'][hname]
+    try:
+        ch0 = corr_cnf['ch0'][hname]
+    except KeyError:
+        ch0 = 3400
+        LOGGER.error('host {0} not in correlator'.format(hname))
     nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0+nchan_spw]
 
