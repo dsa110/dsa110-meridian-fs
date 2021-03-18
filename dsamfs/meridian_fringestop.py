@@ -10,14 +10,15 @@ import sys
 from dsamfs.routines import run_fringestopping
 
 if len(sys.argv) > 1:
-    PARAM_FILE = sys.argv[1]
-else:
-    PARAM_FILE = None
-if len(sys.argv) > 2:
-
-    OUTDIR = sys.argv[2]
+    OUTDIR = sys.argv[1]
 else:
     OUTDIR = None
+
+if len(sys.argv) > 2:
+    PARAM_FILE = sys.argv[2]
+else:
+    PARAM_FILE = None
+
 if len(sys.argv) > 3:
     HEADER_FILE = sys.argv[3]
 else:
