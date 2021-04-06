@@ -24,6 +24,7 @@ import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
+
 MY_CNF = cnf.Conf()
 CORR_CNF = MY_CNF.get('corr')
 MFS_CNF = MY_CNF.get('fringe')
@@ -32,6 +33,8 @@ MFS_CNF = MY_CNF.get('fringe')
 LOGGER = dsl.DsaSyslogger()
 LOGGER.subsystem("software")
 LOGGER.app("dsamfs")
+
+ETCD = dsa_store.DsaStore()
 
 def get_delays(antenna_order, nants):
     """Gets the delays currently set in the sanps.
@@ -75,11 +78,9 @@ def get_time():
     """
     Gets the start time of the first spectrum from etcd.
     """
-
     try:
-        d = dsa_store.DsaStore()
-        ret_time = (d.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
-                    +float(d.get_dict('/mon/snap/1/utc_start')['utc_start'])
+        ret_time = (ETCD.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
+                    +float(ETCD.get_dict('/mon/snap/1/utc_start')['utc_start'])
                     *4.*8.192e-6/86400.)
     except:
         ret_time = 55000.0
@@ -345,7 +346,7 @@ def parse_params(param_file=None):
         fobs = corr_cnf['f0_GHz']+np.arange(nchan)*dfreq
     else:
         fobs = corr_cnf['f0_GHz']-np.arange(nchan)*dfreq
-    pt_dec = corr_cnf['pt_dec'] # in radians
+    pt_dec = get_pointing_declination().to_value(u.rad) #corr_cnf['pt_dec'] in radians
     tsamp = corr_cnf['tsamp'] # in seconds
 
     hname = socket.gethostname()
@@ -363,3 +364,28 @@ def parse_params(param_file=None):
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
         nfreq_int, antenna_order, pt_dec, tsamp, fringestop
+
+def get_pointing_declination(tol=0.25):
+    """Gets the pointing declination from the commanded antenna elevations.
+
+    Parameters
+    ----------
+    tol : float
+        The tolerance for discrepancies in the antenna pointing and commanded
+        elevations, in degrees.
+
+    Returns
+    -------
+    astropy quantity
+        The pointing declination, in degrees or equivalent.
+    """
+    commanded_els = np.zeros(len(CORR_CNF['antenna_order']))
+    for idx, ant in CORR_CNF['antenna_order'].items():
+        antmc = ETCD.get_dict('/mon/ant/{0}'.format(ant))
+        if np.abs(antmc['ant_el'] - antmc['ant_cmd_el']) < tol:
+            commanded_els[idx] = antmc['ant_cmd_el']
+        else:
+            commanded_els[idx] = np.nan
+    pt_el = np.nanmedian(commanded_els)
+    pt_dec = ct.OVRO_LAT*u.rad + pt_el*u.deg - 90*u.deg
+    return pt_dec
