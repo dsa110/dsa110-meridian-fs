@@ -52,7 +52,7 @@ def test_end2end(tmpdir):
     ant1_array = f['PRIMARY'].data['ANTENNA1']
     ant2_array = f['PRIMARY'].data['ANTENNA2']
 
-    df_itrf = get_itrf(height=UV.telescope_location_lat_lon_alt[-1])
+    df_itrf = get_itrf()
     antenna_positions = np.array([df_itrf['x_m'], df_itrf['y_m'],
                                      df_itrf['z_m']]).T-UV.telescope_location
     blen = np.zeros((ant1_array.shape[0], 3))

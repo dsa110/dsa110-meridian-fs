@@ -54,8 +54,9 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
         The full path to the table used in fringestopping.  Defaults None.
     """
     # also need the itrf coordinates of the antennas
-    df = get_itrf(height=ct.OVRO_ALT*u.m, latlon_center=(ct.OVRO_LAT*u.rad,
-                                                         ct.OVRO_LON*u.rad))
+    df = get_itrf(
+        latlon_center=(ct.OVRO_LAT*u.rad, ct.OVRO_LON*u.rad, ct.OVRO_ALT*u.m)
+    )
     ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
     nants_telescope = max(df.index)
     # have to have some way of calculating the ant_1_array and
