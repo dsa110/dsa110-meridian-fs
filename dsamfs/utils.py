@@ -357,13 +357,14 @@ def parse_params(param_file=None):
         LOGGER.error('host {0} not in correlator'.format(hname))
     nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0+nchan_spw]
+    filelength_minutes = mfs_cnf['filelength_minutes']
 
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
-        nfreq_int, antenna_order, pt_dec, tsamp, fringestop
+        nfreq_int, antenna_order, pt_dec, tsamp, fringestop, filelength_minutes
 
 def get_pointing_declination(tol=0.25):
     """Gets the pointing declination from the commanded antenna elevations.
