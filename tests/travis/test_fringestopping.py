@@ -14,20 +14,35 @@ def test_gentable(tmpdir):
     tsamp = 0.134217728
     nint = 10
     antenna_order = [24, 10, 3, 66]
+    outrigger_delays = {24 : 1200, }
+    bname = []
+    for i, ant1 in enumerate(antenna_order):
+        for ant2 in antenna_order[i:]:
+            bname += ['{0}-{1}'.format(ant1, ant2)]
     df_bls = utils.get_baselines(antenna_order, autocorrs=True, casa_order=False)
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
     fringestopping.generate_fringestopping_table(
-        blen, pt_dec, nint, tsamp, antenna_order, outname=fstable)
+        blen, pt_dec, nint, tsamp, antenna_order, outrigger_delays, bname,
+        outname=fstable)
     assert os.path.exists(fstable)
 
-def test_write_fs_delay_table(tmpdir):
+def test_outrigger_lookup():
+    bn = '100-101'
+    ant1, ant2 = bn.split('-')[0]
+    _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, outrigger_delays = parse_params()
+    delay = outrigger_delays.get(int(ant1), 0) - outrigger_delays.get(int(ant2), 0)
+    assert np.abs(delay) > 0
+    delay2 = outrigger_delays[int(ant1)] - outrigger_delays[int(ant2)]
+    assert delay2 == delay
+    
+def test_write_fs_delay_table():
     msname = 'test_write'
     source = du.src('TEST', 16*u.hourangle, 37*u.deg, 1.)
     antenna_order = [24, 10, 3, 66]
     df_bls = utils.get_baselines(antenna_order, autocorrs=True, casa_order=False)
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
     
-def test_calc_uvw(tmpdir):
+def test_calc_uvw():
     nant = 5
     nt = 10
     nbl = (nant*(nant+1))//2
