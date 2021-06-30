@@ -1,6 +1,6 @@
 test: True
 key_string: adad
-nant: 25
+nant: 64
 bw_GHz: 0.250
 nchan: 8192 # Total number of channels before splitting into spws
 f0_GHz: 1.53 # Frequency of the first channel before splitting into spws
@@ -39,6 +39,45 @@ antenna_order:
   22: 101
   23: 100
   24: 103
+  25: 1
+  26: 2
+  27: 3
+  28: 4
+  29: 5
+  30: 6
+  31: 7
+  32: 8
+  33: 9
+  34: 10
+  35: 11
+  36: 12
+  37: 104
+  38: 105
+  39: 106
+  40: 107
+  41: 108
+  42: 109
+  43: 110
+  44: 111
+  45: 112
+  46: 113
+  47: 114
+  48: 115
+  49: 36
+  50: 37
+  51: 38
+  52: 39
+  53: 40
+  54: 41
+  55: 42
+  56: 43
+  57: 44
+  58: 45
+  59: 46
+  60: 47
+  61: 48
+  62: 49
+  63: 50
 nchan_spw: 384
 ch0:
   dsaenv01: 3400
