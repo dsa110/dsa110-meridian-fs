@@ -60,3 +60,9 @@ ch0:
   corr14: 6016
   corr15: 6400
   corr16: 6784
+filelength_minutes: 5
+outrigger_delays:
+  100: 1200
+  101: 1300
+  102: 1100
+  117: 2400
