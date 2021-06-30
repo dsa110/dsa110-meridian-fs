@@ -159,9 +159,8 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
         The central time of each timebin in `data`, in MJD.
     tsamp : float
         The sampling time of the data before integration.
-    bname : array
-        The name of each baseline. E.g. ['1-1', '1-2', '1-3', '2-2', '2-3',
-        '3-3'].
+    bname : list(str)
+        The name of each baseline.
     uvw : ndarray
         The UVW coordinates at the phase center. Dimensions (nbls, 3).
     nsamples : ndarray
@@ -249,7 +248,8 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
 
 def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
-                 fs_table, tsamp, bname, uvw, fobs, vis_model, test, nmins):
+                 fs_table, tsamp, bname, uvw, fobs,
+                 vis_model, test, nmins):
     """
     Reads dada buffer and writes to uvh5 file.
     """
@@ -319,7 +319,10 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                             nsamples.shape[0], nsamples.shape[1], nchan,
                             nfreq_int, npol), axis=3)
 
-                update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples)
+                update_uvh5_file(
+                    fhdf5, data, t, tsamp, bname, uvw,
+                    nsamples
+                )
 
                 idx_frame_out += 1
                 idx_frame_file += 1
