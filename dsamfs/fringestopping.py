@@ -143,7 +143,7 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     bw = bw.T
     bwref = bwref.T
     for i, bn in enumerate(bname):
-        ants = bn.split('-')[0]
+        ants = bn.split('-')
         bw[:, i] += outrigger_delays.get(int(ants[0]), 0) - \
             outrigger_delays.get(int(ants[1]), 0)
     if os.path.exists(outname):
