@@ -36,6 +36,14 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     logger.info("Started fringestopping of dada buffer {0} with {1} "
                 "integrations and {2} baselines.")
 
+    # Get the visibility model
+    vis_model = pu.load_visibility_model(
+        fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order,
+        outrigger_delays, bname
+    )
+    if not fringestop:
+        vis_model = np.ones(vis_model.shape, vis_model.dtype)
+
     if test:
         sample_rate = 1/0.134217728
         header_size = 4096
@@ -62,14 +70,6 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
 
     # Get the start time and the sample time from the reader
     sample_rate_out = 1/(tsamp*nint)
-
-    # Get the visibility model
-    vis_model = pu.load_visibility_model(
-        fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order,
-        outrigger_delays, bname
-    )
-    if not fringestop:
-        vis_model = np.ones(vis_model.shape, vis_model.dtype)
 
     # Read in psrdada buffer, fringestop, and write to uvh5
     dada_to_uvh5(

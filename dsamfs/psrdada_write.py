@@ -10,8 +10,8 @@ from psrdada import Writer
 
 KEY_STRING = 'adad'
 KEY = 0xadad
-NANT = 16
-NCHAN = 1536 #*4
+NANT = 64 #16
+NCHAN = 384 #1536 #*4
 NPOL = 2
 NBLS = NANT*(NANT+1)//2
 
@@ -35,8 +35,8 @@ def main():
     print('Buffer created')
 
     # Start the reader
-    read = 'python ./meridian_fringestop.py'
-    read_log = open('/home/dsa/tmp/write.log', 'w')
+    read = 'python ./meridian_fringestop.py /home/ubuntu/data/ /home/ubuntu/proj/dsa110-shell/dsa110-meridian-fs/dsamfs/data/test_parameters.yaml /home/ubuntu/proj/dsa110-shell/dsa110-meridian-fs/dsamfs/data/test_header.txt'
+    read_log = open('/home/ubuntu/data/tmp/write.log', 'w')
     _read_proc = subprocess.Popen(read, shell=True, stdout=read_log,
                                   stderr=read_log)
     print('Reader started')
