@@ -143,9 +143,9 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     bw = bw.T
     bwref = bwref.T
     for i, bn in enumerate(bname):
-        ant1, ant2 = bn.split('-')[0]
-        bw[:, i] += outrigger_delays.get(int(ant1), 0) - \
-            outrigger_delays.get(int(ant2), 0)
+        ants = bn.split('-')[0]
+        bw[:, i] += outrigger_delays.get(int(ants[0]), 0) - \
+            outrigger_delays.get(int(ants[1]), 0)
     if os.path.exists(outname):
         os.unlink(outname)
     np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,
