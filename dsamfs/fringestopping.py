@@ -97,8 +97,10 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
 
 def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
                                   antenna_order,
+                                  outrigger_delays,
+                                  bname,
                                   outname='fringestopping_table',
-                                  mjd0=58849.0):
+                                  mjd0=58849.0,):
     """Generates a table of the w vectors towards a source.
 
     Generates a table for use in fringestopping and writes it to a numpy
@@ -115,6 +117,10 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
         The number of time integrations to calculate the table for.
     tsamp : float
         The sampling time in seconds.
+    antenna_order : list
+        The order of the antennas.
+    outrigger_delays : dict
+        The outrigger delays in ns.
     outname : str
         The prefix to use for the table to which to save the w vectors. Will
         save the output to `outname`.npy Defaults ``fringestopping_table``.
@@ -136,6 +142,10 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     bw = bw-bwref[:, np.newaxis]
     bw = bw.T
     bwref = bwref.T
+    for i, bn in enumerate(bname):
+        ant1, ant2 = bn.split('-')[0]
+        bw[:, i] += outrigger_delays.get(ant1, 0) - \
+            outrigger_delays.get(ant2, 0)
     if os.path.exists(outname):
         os.unlink(outname)
     np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,

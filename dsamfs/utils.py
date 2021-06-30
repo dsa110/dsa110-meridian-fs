@@ -192,8 +192,10 @@ def integrate(data, nint):
     data = data.reshape(-1, nint, nbls, nchan, npol).mean(1)
     return data
 
-def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
-                          tsamp, antenna_order, ant_delay_tbl=None):
+def load_visibility_model(
+    fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order,
+    outrigger_delays, bname
+):
     """
     Load the visibility model for fringestopping.
 
@@ -224,22 +226,19 @@ def load_visibility_model(fs_table, blen, nant, nint, fobs, pt_dec,
         assert np.abs(fs_data['dec_rad']-pt_dec) < 1e-6
         assert np.abs(fs_data['tsamp_s']-tsamp) < 1e-6
         assert np.all(fs_data['antenna_order']==antenna_order)
+        assert fs_data['outrigger_delays']==outrigger_delays
     except (FileNotFoundError, AssertionError, KeyError):
         print('Creating new fringestopping table.')
-        generate_fringestopping_table(blen, pt_dec, nint, tsamp,
-                                      antenna_order,
-                                      outname=fs_table)
+        generate_fringestopping_table(
+            blen, pt_dec, nint, tsamp, antenna_order, outrigger_delays,
+            bname, outname=fs_table
+        )
         os.link(fs_table,
                 '{0}_{1}.npz'.format(
                     fs_table.strip('.npz'),
                     datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')))
 
     vis_model = zenith_visibility_model(fobs, fs_table)
-
-    if ant_delay_tbl is not None:
-        bl_delays = load_antenna_delays(ant_delay_tbl, nant)
-        vis_model /= np.exp(2j*np.pi*
-                            fobs[:, np.newaxis]*bl_delays[:, np.newaxis, :])
 
     return vis_model
 
@@ -358,13 +357,15 @@ def parse_params(param_file=None):
     nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0+nchan_spw]
     filelength_minutes = mfs_cnf['filelength_minutes']
+    outrigger_delays = mfs_cnf['outrigger_delays']
 
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
-        nfreq_int, antenna_order, pt_dec, tsamp, fringestop, filelength_minutes
+        nfreq_int, antenna_order, pt_dec, tsamp, fringestop, \
+        filelength_minutes, outrigger_delays
 
 def get_pointing_declination(tol=0.25):
     """Gets the pointing declination from the commanded antenna elevations.
