@@ -24,7 +24,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     """
     # Read in parameter file
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
-        samples_per_frame_out, nint,nfreq_int, antenna_order, pt_dec, tsamp, fringestop, filelength_minutes, outrigger_delays = \
+        samples_per_frame_out, nint, nfreq_int, antenna_order, pt_dec, tsamp, fringestop, filelength_minutes, outrigger_delays = \
         pu.parse_params(param_file)
     nbls = (nant*(nant+1))//2
     key = int('0x{0}'.format(key_string), 16)
