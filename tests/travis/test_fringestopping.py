@@ -28,11 +28,11 @@ def test_gentable(tmpdir):
 
 def test_outrigger_lookup():
     bn = '100-101'
-    ant1, ant2 = bn.split('-')[0]
+    ants = bn.split('-')
     _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, outrigger_delays = parse_params()
-    delay = outrigger_delays.get(int(ant1), 0) - outrigger_delays.get(int(ant2), 0)
+    delay = outrigger_delays.get(int(ants[0]), 0) - outrigger_delays.get(int(ants[1]), 0)
     assert np.abs(delay) > 0
-    delay2 = outrigger_delays[int(ant1)] - outrigger_delays[int(ant2)]
+    delay2 = outrigger_delays[int(ants[0])] - outrigger_delays[int(ants[1])]
     assert delay2 == delay
     
 def test_write_fs_delay_table():
