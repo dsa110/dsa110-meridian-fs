@@ -2,6 +2,7 @@ import os
 import pytest
 from antpos import utils
 from dsamfs import fringestopping
+from dsamfs.utils import parse_params
 import dsacalib.utils as du
 import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
