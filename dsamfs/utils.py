@@ -383,11 +383,15 @@ def get_pointing_declination(tol=0.25):
     """
     commanded_els = np.zeros(len(CORR_CNF['antenna_order']))
     for idx, ant in CORR_CNF['antenna_order'].items():
-        antmc = ETCD.get_dict('/mon/ant/{0}'.format(ant))
-        if np.abs(antmc['ant_el'] - antmc['ant_cmd_el']) < tol:
+        try:
+            antmc = ETCD.get_dict('/mon/ant/{0}'.format(ant))
+            a1 = np.abs(antmc['ant_el'] - antmc['ant_cmd_el'])
+        except:
+            a1 = 2.*tol
+        if a1 < tol:
             commanded_els[idx] = antmc['ant_cmd_el']
         else:
             commanded_els[idx] = np.nan
-    pt_el = np.nanmedian(commanded_els)
-    pt_dec = ct.OVRO_LAT*u.rad + pt_el*u.deg - 90*u.deg
+            pt_el = np.nanmedian(commanded_els)
+            pt_dec = ct.OVRO_LAT*u.rad + pt_el*u.deg - 90*u.deg
     return pt_dec
