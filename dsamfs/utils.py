@@ -392,6 +392,10 @@ def get_pointing_declination(tol=0.25):
             commanded_els[idx] = antmc['ant_cmd_el']
         else:
             commanded_els[idx] = np.nan
-            pt_el = np.nanmedian(commanded_els)
-            pt_dec = ct.OVRO_LAT*u.rad + pt_el*u.deg - 90*u.deg
+
+    pt_el = np.nanmedian(commanded_els)
+    if pt_el is not np.nan:
+        pt_dec = ct.OVRO_LAT*u.rad + pt_el*u.deg - 90*u.deg
+    else:
+        pt_el = CORR_CNF['pt_dec']
     return pt_dec
