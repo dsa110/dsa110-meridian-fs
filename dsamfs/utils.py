@@ -221,7 +221,7 @@ def load_visibility_model(
         The visibility model to use for fringestopping.
     """
     try:
-        fs_data = np.load(fs_table)
+        fs_data = np.load(fs_table, allow_pickle=True)
         assert fs_data['bw'].shape == (nint, blen.shape[0])
         assert np.abs(fs_data['dec_rad']-pt_dec) < 1e-6
         assert np.abs(fs_data['tsamp_s']-tsamp) < 1e-6
