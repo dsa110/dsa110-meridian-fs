@@ -127,6 +127,7 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     mjd0 : float
         The start time in MJD. Defaults 58849.0.
     """
+    #outname = '{0}_{1}deg_{2}ant'.format(outname, (pt_dec*u.rad).to(u.deg), len(antenna_order))
     dt = np.arange(nint)*tsamp
     dt = dt-np.median(dt)
     hangle = dt*360/ct.SECONDS_PER_SIDEREAL_DAY
