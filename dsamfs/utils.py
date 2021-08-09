@@ -61,6 +61,7 @@ def get_delays(antenna_order, nants):
     else:
         nant_lastsnap = nant_snap
     for i in range(0, nsnaps):
+        LOGGER.info('getting delays for snap {0} of {1}'.format(i+1, nsnaps))
         try:
             snap_delays = np.array(
                 d.get_dict(
@@ -70,7 +71,7 @@ def get_delays(antenna_order, nants):
             snap_delays = snap_delays.reshape(3, 2)[
                 :nant_snap if i<nsnaps-1 else nant_lastsnap, :]
             delays[(antenna_order-1)[i*3:(i+1)*3], :] = snap_delays
-        except AttributeError:
+        except (AttributeError, TypeError) as e:
             LOGGER.error('delays not set for snap{0}'.format(i+1))
     return delays
 
