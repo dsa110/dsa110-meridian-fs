@@ -30,7 +30,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     nbls = (nant*(nant+1))//2
     key = int('0x{0}'.format(key_string), 16)
 
-    fs_table = 'fringestopping_table_dec{0:.2f}deg_{1}ant.npz'.format((pt_dec*u.rad).to_value(u.deg), len(antenna_order))
+    fs_table = 'fringestopping_table_dec{0:.1f}deg_{1}ant.npz'.format((pt_dec*u.rad).to_value(u.deg), len(antenna_order))
     if output_dir is not None:
         fs_table = '{0}/{1}'.format(output_dir, fs_table)
     bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, casa_order=False)
