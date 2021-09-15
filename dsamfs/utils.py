@@ -234,10 +234,6 @@ def load_visibility_model(
             blen, pt_dec, nint, tsamp, antenna_order, outrigger_delays,
             bname, outname=fs_table
         )
-        os.link(fs_table,
-                '{0}_{1}.npz'.format(
-                    fs_table.strip('.npz'),
-                    datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')))
 
     vis_model = zenith_visibility_model(fobs, fs_table)
 
