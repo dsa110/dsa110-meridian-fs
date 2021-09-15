@@ -89,4 +89,4 @@ def test_end2end(tmpdir):
     UV = UVData()
     UV.read(fname.replace('hdf5', 'ms'), file_type='ms')
     assert np.all(np.abs(UV.antenna_diameters-4.65) < 1e-4)
-    run_fringestopping(param_file=param_path, header_file=header_path, output_dir=tmpdir)
+
