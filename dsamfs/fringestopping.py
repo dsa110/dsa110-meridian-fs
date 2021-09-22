@@ -134,15 +134,18 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
     _bu, _bv, bw = calc_uvw(blen, mjd0+dt/ct.SECONDS_PER_DAY, 'HADEC',
                             hangle*u.deg,
                             np.ones(hangle.shape)*(pt_dec*u.rad).to(u.deg))
-    if nint%2 == 1:
-        bwref = bw[:, (nint-1)//2] #pylint: disable=unsubscriptable-object
-    else:
-        _bu, _bv, bwref = calc_uvw(blen, mjd0, 'HADEC', 0.*u.deg,
-                                   (pt_dec*u.rad).to(u.deg))
-        bwref = bwref.squeeze()
-    bw = bw-bwref[:, np.newaxis]
+    # This next section is commented out to 
+    # remove geometric delay here since the outriggers have very large delays.
+    # if nint%2 == 1:
+    #     bwref = bw[:, (nint-1)//2] #pylint: disable=unsubscriptable-object
+    # else:
+    #     _bu, _bv, bwref = calc_uvw(blen, mjd0, 'HADEC', 0.*u.deg,
+    #                                (pt_dec*u.rad).to(u.deg))
+    #     bwref = bwref.squeeze()
+    # bw = bw-bwref[:, np.newaxis]
     bw = bw.T
-    bwref = bwref.T
+    bwref = np.zeros(bw.shape, bw.dtype)
+    # bwref = bwref.T
     for i, bn in enumerate(bname):
         ants = bn.split('-')
         bw[:, i] += (outrigger_delays.get(int(ants[0]), 0) - \
