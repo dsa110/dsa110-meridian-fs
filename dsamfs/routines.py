@@ -34,6 +34,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     if output_dir is not None:
         fs_table = '{0}/{1}'.format(output_dir, fs_table)
     bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, casa_order=False)
+
     logger.info("Started fringestopping of dada buffer {0} with {1} "
                 "integrations and {2} baselines.")
 

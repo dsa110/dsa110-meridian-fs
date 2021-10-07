@@ -273,7 +273,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, fs_table)
 
-            idx_frame_file = 0 # number of fsed frames write to curent file
+            idx_frame_file = 0 # number of fsed frames write to current file
             while (idx_frame_file < max_frames_per_file) and (not nans):
                 data_in = np.ones(
                     (samples_per_frame_out*nint, nbls, nchan*nfreq_int, npol),
@@ -299,9 +299,16 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                         tstart = pu.get_time()
                     tstart += (nint*tsamp/2)/ct.SECONDS_PER_DAY+2400000.5
 
-                data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
-                t, tstart = pu.update_time(tstart, samples_per_frame_out,
-                                           sample_rate_out)
+                data, nsamples = fringestop_on_zenith(
+                    data_in,
+                    vis_model,
+                    nans
+                )
+                t, tstart = pu.update_time(
+                    tstart,
+                    samples_per_frame_out,
+                    sample_rate_out
+                )
                 if nfreq_int > 1:
                     if not nans:
                         data = np.mean(data.reshape(
@@ -318,7 +325,10 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                         nsamples = np.nanmean(nsamples.reshape(
                             nsamples.shape[0], nsamples.shape[1], nchan,
                             nfreq_int, npol), axis=3)
-
+                vismodel2 = np.exp(2j*np.pi/ct.C_GHZ_M*fobs[:, np.newaxis]*uvw[np.newaxis, :, np.newaxis, np.newaxis, -1])
+                print('uvw: ', uvw.shape)
+                print('vismodel2 : ', vismodel2.shape)
+                print('data : ', data.shape)
                 update_uvh5_file(
                     fhdf5, data, t, tsamp, bname, uvw,
                     nsamples
