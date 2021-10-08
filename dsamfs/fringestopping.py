@@ -205,6 +205,7 @@ def fringestop_on_zenith(vis, vis_model, nans=False):
     assert nt%nint == 0, ('Number of times in the visibility file must be '
                           'divisible by nint')
     vis = vis.reshape(-1, nint, nbl, nchan, npol)
+    print(vis.shape, vis_model.shape)
     vis /= vis_model
     if nans:
         nsamples = np.count_nonzero(~np.isnan(vis), axis=1)
