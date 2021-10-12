@@ -95,12 +95,17 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
     return buvw
 
 
-def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
-                                  antenna_order,
-                                  outrigger_delays,
-                                  bname,
-                                  outname='fringestopping_table',
-                                  mjd0=58849.0,):
+def generate_fringestopping_table(
+    blen,
+    pt_dec,
+    nint,
+    tsamp,      
+    antenna_order,
+    outrigger_delays,
+    bname,
+    outname='fringestopping_table',
+    mjd0=58849.0
+):
     """Generates a table of the w vectors towards a source.
 
     Generates a table for use in fringestopping and writes it to a numpy
@@ -121,38 +126,61 @@ def generate_fringestopping_table(blen, pt_dec, nint, tsamp,
         The order of the antennas.
     outrigger_delays : dict
         The outrigger delays in ns.
+    bname : list
+        The names of each baseline. Length nbaselines. Names are strings.
     outname : str
         The prefix to use for the table to which to save the w vectors. Will
         save the output to `outname`.npy Defaults ``fringestopping_table``.
     mjd0 : float
         The start time in MJD. Defaults 58849.0.
     """
-    #outname = '{0}_{1}deg_{2}ant'.format(outname, (pt_dec*u.rad).to(u.deg), len(antenna_order))
+    # Get the indices that correspond to baselines with the refant
+    # Use the first antenna as the refant so that the baselines are in
+    # the same order as the antennas
+    refidxs = []
+    refant = str(antenna_order[0])
+    for i, bn in enumerate(bname):
+        if refant in bn:
+            refidxs += [i]
+
+    # Get the geometric delays at the "source" position and meridian
     dt = np.arange(nint)*tsamp
     dt = dt-np.median(dt)
     hangle = dt*360/ct.SECONDS_PER_SIDEREAL_DAY
-    _bu, _bv, bw = calc_uvw(blen, mjd0+dt/ct.SECONDS_PER_DAY, 'HADEC',
-                            hangle*u.deg,
-                            np.ones(hangle.shape)*(pt_dec*u.rad).to(u.deg))
-    # This next section is commented out to 
-    # remove geometric delay here since the outriggers have very large delays.
-    if nint%2 == 1:
-        bwref = bw[:, (nint-1)//2] #pylint: disable=unsubscriptable-object
-    else:
-        _bu, _bv, bwref = calc_uvw(blen, mjd0, 'HADEC', 0.*u.deg,
-            (pt_dec*u.rad).to(u.deg))
-
-    bw = bw-bwref[:, np.newaxis]
+    _bu, _bv, bw = calc_uvw(
+        blen,
+        mjd0+dt/ct.SECONDS_PER_DAY,
+        'HADEC',
+        hangle*u.deg,        
+        np.ones(hangle.shape)*(pt_dec*u.rad).to(u.deg)
+    )
+    _bu, _bv, bwref = calc_uvw(
+        blen,
+        mjd0,
+        'HADEC',
+        0.*u.deg,
+        (pt_dec*u.rad).to(u.deg)
+    )
+    ant_bw = bwref[refidxs] 
+    bw = bw-bwref
     bw = bw.T
     bwref = bwref.T
+    
+    # Add in per-antenna delays for each baseline
     for i, bn in enumerate(bname):
-        ants = bn.split('-')
-        bw[:, i] += (outrigger_delays.get(int(ants[0]), 0) - \
-            outrigger_delays.get(int(ants[1]), 0))*0.29979245800000004
+        ant1, ant2 = bn.split('-')
+        # Add back in bw at the meridian calculated per antenna
+        bw[:, i] += ant_bw[antenna_order.index(int(ant2)), :] - \
+            ant_bw[antenna_order.index(int(ant1)), :]
+        # Add in outrigger delays
+        bw[:, i] += (outrigger_delays.get(int(ant1), 0) - \
+            outrigger_delays.get(int(ant2), 0))*0.29979245800000004
+
+    # Save the fringestopping table
     if os.path.exists(outname):
         os.unlink(outname)
     np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,
-             bwref=bwref, antenna_order=antenna_order, outrigger_delays=outrigger_delays)
+             bwref=bwref, antenna_order=antenna_order, outrigger_delays=outrigger_delays, ant_bw=ant_bw)
 
 def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     """Creates the visibility model from the fringestopping table.
