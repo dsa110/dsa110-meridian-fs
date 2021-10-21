@@ -12,8 +12,12 @@ import numpy as np
 import scipy # pylint: disable=unused-import
 import casatools as cc
 import astropy.units as u
+from dsautils import cnf
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
+
+MYCONF = cnf.Conf()
+REFMJD = MYCONF.get('fringe')['refmjd']
 
 def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
     """Calculates uvw coordinates.
@@ -104,7 +108,7 @@ def generate_fringestopping_table(
     outrigger_delays,
     bname,
     outname='fringestopping_table',
-    mjd0=58849.0
+    mjd0=REFMJD
 ):
     """Generates a table of the w vectors towards a source.
 
