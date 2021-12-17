@@ -28,6 +28,7 @@ from dsamfs.fringestopping import zenith_visibility_model
 MY_CNF = cnf.Conf()
 CORR_CNF = MY_CNF.get('corr')
 MFS_CNF = MY_CNF.get('fringe')
+CAL_CNF = MY_CNF.get('cal')
 
 # Logger
 LOGGER = dsl.DsaSyslogger()
@@ -386,7 +387,7 @@ def get_pointing_declination(tol=0.25):
         except:
             a1 = 2.*tol
         if a1 < tol:
-            commanded_els[idx] = antmc['ant_cmd_el']
+            commanded_els[idx] = antmc['ant_cmd_el'] + CAL_CNF['el_offset'].get(ant, 0.)
         else:
             commanded_els[idx] = np.nan
 
