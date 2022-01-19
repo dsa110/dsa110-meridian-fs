@@ -122,7 +122,7 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     extra = header.create_group("extra_keywords")
     extra["phase_center_dec"] = pt_dec
     extra["ha_phase_center"] = 0.
-    extra["phase_center_epoch"] = 2000
+    extra["phase_center_epoch"] = 'HADEC'
     if fs_table is not None:
         extra["fs_table"] = np.string_(fs_table)
     snapdelays = pu.get_delays(np.array(antenna_order), nants_telescope)
