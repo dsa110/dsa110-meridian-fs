@@ -387,7 +387,7 @@ def get_pointing_declination(tol=0.25):
         except:
             a1 = 2.*tol
         if a1 < tol:
-            commanded_els[idx] = antmc['ant_cmd_el'] + CAL_CNF['el_offset'].get(ant, 0.)
+            commanded_els[idx] = antmc['ant_cmd_el']
         else:
             commanded_els[idx] = np.nan
 
