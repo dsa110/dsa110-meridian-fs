@@ -115,7 +115,10 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     # AIPS memo 117:
     # Values of 1 through 4 are assiged to Stokes I, Q, U, V
     # Values of -5 through -8 to XX, YY, XY, YX
-    header["polarization_array"] = np.array([-5, -6])
+    if npol == 4:
+        header["polarization_array"] = np.array([-5, -7, -8, -6])
+    else:
+        header["polarization_array"] = np.array([-5, -6])
     header["antenna_positions"] = ant_itrf
 
     # Optional parameters
