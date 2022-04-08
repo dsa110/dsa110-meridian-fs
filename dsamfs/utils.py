@@ -403,8 +403,7 @@ def get_pointing_declination(tol=0.25):
 
 def put_outrigger_delays(outrigger_delays):
     current_mjd = Time(datetime.utcnow()).mjd
-    ETCD.put_dict(
-        "/mon/array/outrigger_delays",
-        {
-            'time': current_mjd,
-            'outrigger_delays': outrigger_delays})
+
+    for ant in range(1, 118):
+        payload = {'time': current_mjd, 'delay': outrigger_delays.get(str(ant), 0)}
+        ETCD.put_dict(f"/mon/fringe/{ant}", payload)

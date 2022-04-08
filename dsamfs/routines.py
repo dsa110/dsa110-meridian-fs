@@ -31,6 +31,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     key = int('0x{0}'.format(key_string), 16)
 
     # Update outrigger delays in etcd
+    # TODO: Track reftime used for fringestopping in etcd along with the outrigger delays
     pu.put_outrigger_delays(outrigger_delays)
 
     fs_table = 'fringestopping_table_dec{0:.1f}deg_{1}ant.npz'.format((pt_dec*u.rad).to_value(u.deg), len(antenna_order))
