@@ -17,11 +17,14 @@ import astropy.units as u
 from antpos.utils import get_baselines
 import scipy #pylint: disable=unused-import
 import casatools as cc
+from astropy.time import Time
+
 from dsautils import dsa_store
 import dsautils.dsa_syslog as dsl
 import dsautils.cnf as cnf
 import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
+
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
 
@@ -397,3 +400,11 @@ def get_pointing_declination(tol=0.25):
     else:
         pt_el = CORR_CNF['pt_dec']
     return pt_dec
+
+def put_outrigger_delays(outrigger_delays):
+    current_mjd = Time(datetime.utcnow()).mjd
+    ETCD.put_dict(
+        "/mon/array/outrigger_delays",
+        {
+            'time': current_mjd,
+            'outrigger_delays': outrigger_delays})
