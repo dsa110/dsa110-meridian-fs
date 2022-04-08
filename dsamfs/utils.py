@@ -25,7 +25,7 @@ from dsacalib.fringestopping import calc_uvw
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
 
-MY_CNF = cnf.Conf()
+MY_CNF = cnf.Conf(use_etcd=True)
 CORR_CNF = MY_CNF.get('corr')
 MFS_CNF = MY_CNF.get('fringe')
 CAL_CNF = MY_CNF.get('cal')

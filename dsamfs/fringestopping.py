@@ -16,7 +16,7 @@ from dsautils import cnf
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
 
-MYCONF = cnf.Conf()
+MYCONF = cnf.Conf(use_etcd=True)
 REFMJD = MYCONF.get('fringe')['refmjd']
 
 def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
