@@ -107,7 +107,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
         ) as p_kill:
-        outs, errs = p_kill.communicate(timeout=15)
+            outs, errs = p_kill.communicate(timeout=15)
             if p_kill.returncode != 0:
                 logger.info(errs.decode("utf-8"))
                 print(errs.decode("utf-8"))
