@@ -36,8 +36,6 @@ def test_end2end(tmpdir):
     print(UV.time_array.dtype)
     # Check that we can convert to uvfits
     uvh5_to_ms(fname, fname.replace('.hdf5', ''))
-    assert os.path.exists(fname.replace('hdf5', 'fits'))
-    # Check that we can read in the uvfits file
     assert os.path.exists(fname.replace('hdf5', 'ms'))
     ms = cc.ms()
     status = ms.open(fname.replace('hdf5', 'ms'))
