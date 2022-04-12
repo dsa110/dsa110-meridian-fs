@@ -96,16 +96,8 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
 
 
 def generate_fringestopping_table(
-    blen,
-    pt_dec,
-    nint,
-    tsamp,      
-    antenna_order,
-    outrigger_delays,
-    bname,
-    mjd0,
-    outname='fringestopping_table',
-):
+        blen, pt_dec, nint, tsamp, antenna_order, outrigger_delays, bname, mjd0,
+        outname="fringestopping_table"):
     """Generates a table of the w vectors towards a source.
 
     Generates a table for use in fringestopping and writes it to a numpy
@@ -148,24 +140,15 @@ def generate_fringestopping_table(
     dt = dt-np.median(dt)
     hangle = dt*360/ct.SECONDS_PER_SIDEREAL_DAY
     _bu, _bv, bw = calc_uvw(
-        blen,
-        mjd0+dt/ct.SECONDS_PER_DAY,
-        'HADEC',
-        hangle*u.deg,        
-        np.ones(hangle.shape)*(pt_dec*u.rad).to(u.deg)
-    )
+        blen, mjd0+dt/ct.SECONDS_PER_DAY, "HADEC", hangle*u.deg,
+        np.ones(hangle.shape)*(pt_dec*u.rad).to(u.deg))
     _bu, _bv, bwref = calc_uvw(
-        blen,
-        mjd0,
-        'HADEC',
-        0.*u.deg,
-        (pt_dec*u.rad).to(u.deg)
-    )
-    ant_bw = bwref[refidxs] 
+        blen, mjd0, "HADEC", 0.*u.deg, (pt_dec*u.rad).to(u.deg))
+    ant_bw = bwref[refidxs]
     bw = bw-bwref
     bw = bw.T
     bwref = bwref.T
-    
+
     # Add in per-antenna delays for each baseline
     for i, bn in enumerate(bname):
         ant1, ant2 = bn.split('-')
@@ -179,8 +162,9 @@ def generate_fringestopping_table(
     # Save the fringestopping table
     if os.path.exists(outname):
         os.unlink(outname)
-    np.savez(outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw,
-             bwref=bwref, antenna_order=antenna_order, outrigger_delays=outrigger_delays, ant_bw=ant_bw)
+    np.savez(
+        outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw, bwref=bwref,
+        antenna_order=antenna_order, outrigger_delays=outrigger_delays, ant_bw=ant_bw)
 
 def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     """Creates the visibility model from the fringestopping table.

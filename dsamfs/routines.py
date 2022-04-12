@@ -64,7 +64,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
                 stderr=subprocess.PIPE
         ) as p_create:
             outs, errs = p_create.communicate(timeout=15)
-        
+
             if p_create.returncode != 0:
                 print(errs.decode("utf-8"))
                 logger.info(errs.decode("utf-8"))
@@ -101,7 +101,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
 
         print(outs.decode("utf-8"))
         print(errs.decode("utf-8"))
-        
+
         with subprocess.Popen(
                 ["dada_db", "-d", "-k", key_string],
                 stdout=subprocess.PIPE,

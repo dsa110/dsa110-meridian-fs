@@ -77,6 +77,7 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
                                    "on {0}".format(datetime.now().strftime(
                                        '%Y-%m-%dT%H:%M:%S')))
     header["phase_type"] = np.string_("drift")
+    header["phase_center_app_dec"] = pt_dec
     header["Nants_data"] = len(antenna_order)
     header["Nants_telescope"] = nants_telescope
     header["antenna_diameters"] = np.ones(nants_telescope)*4.65

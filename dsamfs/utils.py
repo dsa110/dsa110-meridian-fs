@@ -7,7 +7,6 @@ Utilities to interact with the psrdada buffer written to
 by the DSA-110 correlator
 """
 
-import os
 import socket
 from datetime import datetime
 from collections import OrderedDict
@@ -21,7 +20,7 @@ from astropy.time import Time
 
 from dsautils import dsa_store
 import dsautils.dsa_syslog as dsl
-import dsautils.cnf as cnf
+from dsautils import cnf
 import dsacalib.constants as ct
 from dsacalib.fringestopping import calc_uvw
 
@@ -368,7 +367,7 @@ def parse_params(param_file=None):
 
 def get_pointing_declination():
     """Gets the pointing declination from etcd."""
-    return etcd.get_dict("/mon/array/dec")['dec_deg']*u.deg
+    return ETCD.get_dict("/mon/array/dec")['dec_deg']*u.deg
 
 def put_outrigger_delays(outrigger_delays):
     """Store the current outrigger delays in etcd."""
@@ -382,4 +381,4 @@ def put_refmjd(refmjd):
     """Store the current reference time in etcd."""
     current_mjd = Time(datetime.utcnow()).mjd
     payload = {'time': current_mjd, 'ant_num': 0, 'refmjd': refmjd}
-    ETCD.put_dict(f"/mon/fringe/0", payload)
+    ETCD.put_dict("/mon/fringe/0", payload)
