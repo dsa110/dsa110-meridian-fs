@@ -346,7 +346,7 @@ def parse_params(param_file=None):
         fobs = corr_cnf['f0_GHz']+np.arange(nchan)*dfreq
     else:
         fobs = corr_cnf['f0_GHz']-np.arange(nchan)*dfreq
-    pt_dec = get_pointing_declination().to_value(u.rad) #corr_cnf['pt_dec'] in radians
+    pt_dec = get_pointing_declination().to_value(u.rad)
     tsamp = corr_cnf['tsamp'] # in seconds
 
     hname = socket.gethostname()
@@ -368,42 +368,20 @@ def parse_params(param_file=None):
         nfreq_int, antenna_order, pt_dec, tsamp, fringestop, \
         filelength_minutes, outrigger_delays
 
-def get_pointing_declination(tol=0.25):
-    """Gets the pointing declination from the commanded antenna elevations.
-
-    Parameters
-    ----------
-    tol : float
-        The tolerance for discrepancies in the antenna pointing and commanded
-        elevations, in degrees.
-
-    Returns
-    -------
-    astropy quantity
-        The pointing declination, in degrees or equivalent.
-    """
-    commanded_els = np.zeros(len(CORR_CNF['antenna_order']))
-    for idx, ant in CORR_CNF['antenna_order'].items():
-        try:
-            antmc = ETCD.get_dict('/mon/ant/{0}'.format(ant))
-            a1 = np.abs(antmc['ant_el'] - antmc['ant_cmd_el'])
-        except:
-            a1 = 2.*tol
-        if a1 < tol:
-            commanded_els[idx] = antmc['ant_cmd_el']
-        else:
-            commanded_els[idx] = np.nan
-
-    pt_el = np.nanmedian(commanded_els)
-    if pt_el is not np.nan:
-        pt_dec = ct.OVRO_LAT*u.rad + pt_el*u.deg - 90*u.deg
-    else:
-        pt_el = CORR_CNF['pt_dec']
-    return pt_dec
+def get_pointing_declination():
+    """Gets the pointing declination from etcd."""
+    return etcd.get_dict("/mon/array/dec")['dec_deg']*u.deg
 
 def put_outrigger_delays(outrigger_delays):
+    """Store the current outrigger delays in etcd."""
     current_mjd = Time(datetime.utcnow()).mjd
 
     for ant in range(1, 118):
-        payload = {'time': current_mjd, 'delay': outrigger_delays.get(str(ant), 0)}
+        payload = {'time': current_mjd, 'ant_num': ant, 'delay': outrigger_delays.get(str(ant), 0)}
         ETCD.put_dict(f"/mon/fringe/{ant}", payload)
+
+def put_reftime(refmjd):
+    """Store the current reference time in etcd."""
+    current_mjd = Time(datetime.utcnow()).mjd
+    payload = {'time': current_mjd, 'ant_num': 0, 'refmjd' refmjd}
+    ETCD.put_dict(f"/mon/fringe/0", payload)
