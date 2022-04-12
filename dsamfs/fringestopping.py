@@ -12,7 +12,6 @@ import numpy as np
 import scipy # pylint: disable=unused-import
 import casatools as cc
 import astropy.units as u
-from dsautils import cnf
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
 
