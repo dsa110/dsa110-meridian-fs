@@ -28,11 +28,6 @@ from dsacalib.fringestopping import calc_uvw
 from dsamfs.fringestopping import generate_fringestopping_table
 from dsamfs.fringestopping import zenith_visibility_model
 
-MY_CNF = cnf.Conf(use_etcd=True)
-CORR_CNF = MY_CNF.get('corr')
-MFS_CNF = MY_CNF.get('fringe')
-CAL_CNF = MY_CNF.get('cal')
-
 # Logger
 LOGGER = dsl.DsaSyslogger()
 LOGGER.subsystem("software")
@@ -199,7 +194,7 @@ def integrate(data, nint):
 
 def load_visibility_model(
     fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order,
-    outrigger_delays, bname
+    outrigger_delays, bname, refmjd
 ):
     """
     Load the visibility model for fringestopping.
@@ -232,11 +227,12 @@ def load_visibility_model(
         assert np.abs(fs_data['tsamp_s']-tsamp) < 1e-6
         assert np.all(fs_data['antenna_order']==antenna_order)
         assert fs_data['outrigger_delays']==outrigger_delays
+        assert fs_data['refmjd']==refmjd
     except (FileNotFoundError, AssertionError, KeyError):
         print('Creating new fringestopping table.')
         generate_fringestopping_table(
             blen, pt_dec, nint, tsamp, antenna_order, outrigger_delays,
-            bname, outname=fs_table
+            bname, refmjd, outname=fs_table
         )
 
     vis_model = zenith_visibility_model(fobs, fs_table)
@@ -278,7 +274,7 @@ def load_antenna_delays(ant_delay_table, nant, npol=2):
 
     return bl_delays
 
-def baseline_uvw(antenna_order, pt_dec, autocorrs=True, casa_order=False):
+def baseline_uvw(antenna_order, pt_dec, refmjd, autocorrs=True, casa_order=False):
     """Calculates the antenna positions and baseline coordinates.
 
     Parameters
@@ -304,12 +300,10 @@ def baseline_uvw(antenna_order, pt_dec, autocorrs=True, casa_order=False):
         The uvw coordinates of the baselines for a phase reference at meridian.
         Dimensions (nbaselines, 3).
     """
-    df_bls = get_baselines(antenna_order, autocorrs=autocorrs,
-                           casa_order=casa_order)
+    df_bls = get_baselines(antenna_order, autocorrs=autocorrs, casa_order=casa_order)
     bname = df_bls['bname']
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
-    bu, bv, bw = calc_uvw(blen, 58849.0, 'HADEC', 0.*u.deg,
-                          (pt_dec*u.rad).to(u.deg))
+    bu, bv, bw = calc_uvw(blen, refmjd, 'HADEC', 0.*u.deg, (pt_dec*u.rad).to(u.deg))
     uvw = np.array([bu, bv, bw]).T
     return bname, blen, uvw
 
@@ -322,13 +316,15 @@ def parse_params(param_file=None):
         The full path to the yaml parameter file.
     """
     if param_file is not None:
-        fhand = open(param_file)
-        corr_cnf = yaml.safe_load(fhand)
+        with open(param_file) as fhand:
+            corr_cnf = yaml.safe_load(fhand)
         mfs_cnf = corr_cnf
-        fhand.close()
+
     else:
-        corr_cnf = CORR_CNF
-        mfs_cnf = MFS_CNF
+        my_cnf = cnf.Conf(use_etcd=True)
+        corr_cnf = my_cnf.get('corr')
+        mfs_cnf = my_cnf.get('fringe')
+
     test = mfs_cnf['test']
     key_string = mfs_cnf['key_string']
     nant = corr_cnf['nant']
@@ -360,13 +356,15 @@ def parse_params(param_file=None):
     filelength_minutes = mfs_cnf['filelength_minutes']
     outrigger_delays = mfs_cnf['outrigger_delays']
 
+    refmjd = mfs_cnf['refmjd']
+
     assert (samples_per_frame_out*nint)%samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
 
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
         nfreq_int, antenna_order, pt_dec, tsamp, fringestop, \
-        filelength_minutes, outrigger_delays
+        filelength_minutes, outrigger_delays, refmjd
 
 def get_pointing_declination():
     """Gets the pointing declination from etcd."""
@@ -380,8 +378,8 @@ def put_outrigger_delays(outrigger_delays):
         payload = {'time': current_mjd, 'ant_num': ant, 'delay': outrigger_delays.get(str(ant), 0)}
         ETCD.put_dict(f"/mon/fringe/{ant}", payload)
 
-def put_reftime(refmjd):
+def put_refmjd(refmjd):
     """Store the current reference time in etcd."""
     current_mjd = Time(datetime.utcnow()).mjd
-    payload = {'time': current_mjd, 'ant_num': 0, 'refmjd' refmjd}
+    payload = {'time': current_mjd, 'ant_num': 0, 'refmjd': refmjd}
     ETCD.put_dict(f"/mon/fringe/0", payload)

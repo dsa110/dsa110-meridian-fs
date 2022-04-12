@@ -16,9 +16,6 @@ from dsautils import cnf
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
 
-MYCONF = cnf.Conf(use_etcd=True)
-REFMJD = MYCONF.get('fringe')['refmjd']
-
 def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
     """Calculates uvw coordinates.
 
@@ -107,8 +104,8 @@ def generate_fringestopping_table(
     antenna_order,
     outrigger_delays,
     bname,
+    mjd0,
     outname='fringestopping_table',
-    mjd0=REFMJD
 ):
     """Generates a table of the w vectors towards a source.
 
@@ -136,7 +133,7 @@ def generate_fringestopping_table(
         The prefix to use for the table to which to save the w vectors. Will
         save the output to `outname`.npy Defaults ``fringestopping_table``.
     mjd0 : float
-        The start time in MJD. Defaults 58849.0.
+        The start time in MJD.
     """
     # Get the indices that correspond to baselines with the refant
     # Use the first antenna as the refant so that the baselines are in
