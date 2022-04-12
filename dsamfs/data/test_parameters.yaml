@@ -102,4 +102,8 @@ ch0:
   corr16: 6784
 filelength_minutes: 5
 outrigger_delays:
-  100: 0
+  100: 1200
+  101: 1300
+  102: 1100
+  117: 2400
+refmjd: 59000.
