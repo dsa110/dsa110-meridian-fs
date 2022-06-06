@@ -1,0 +1,6 @@
+nant: 63
+localhost: corr23
+npol: 2
+nchan: 384
+nint: 2
+nt: 16

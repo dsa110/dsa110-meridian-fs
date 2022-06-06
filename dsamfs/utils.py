@@ -34,7 +34,8 @@ LOGGER.app("dsamfs")
 
 ETCD = dsa_store.DsaStore()
 
-def get_delays(antenna_order, nants):
+
+def get_delays(antenna_order: np.ndarray, nants: int):
     """Gets the delays currently set in the sanps.
 
     Parameters
@@ -43,14 +44,16 @@ def get_delays(antenna_order, nants):
         The order of antennas in the snaps.
     nants : int
         The total number of antennas in the array.
+    logger : int
+        A dsasyslogger instance.
 
     Returns
     -------
     ndarray
         The delays for each antenna/pol in the array.
     """
+    antenna_order = np.array(antenna_order)
     delays = np.zeros((nants, 2), dtype=np.int)
-    d = dsa_store.DsaStore()
     nant_snap = 3
     nsnaps = len(antenna_order)//nant_snap
     nant_lastsnap = len(antenna_order)%nant_snap
@@ -58,25 +61,29 @@ def get_delays(antenna_order, nants):
         nsnaps += 1
     else:
         nant_lastsnap = nant_snap
+
     for i in range(0, nsnaps):
-        LOGGER.info('getting delays for snap {0} of {1}'.format(i+1, nsnaps))
+        logger.info('getting delays for snap {0} of {1}'.format(i+1, nsnaps))
         try:
             snap_delays = np.array(
-                d.get_dict(
+                ETCD.get_dict(
                     '/mon/snap/{0}/delays'.format(i+1)
                 )['delays']
             )*2
             snap_delays = snap_delays.reshape(3, 2)[
                 :nant_snap if i<nsnaps-1 else nant_lastsnap, :]
             delays[(antenna_order-1)[i*3:(i+1)*3], :] = snap_delays
+
         except (AttributeError, TypeError) as e:
-            LOGGER.error('delays not set for snap{0}'.format(i+1))
+            logger.error('delays not set for snap{0}'.format(i+1))
+
     return delays
 
 def get_time():
     """
     Gets the start time of the first spectrum from etcd.
     """
+    etcd = dsa_store.
     try:
         ret_time = (ETCD.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
                     +float(ETCD.get_dict('/mon/snap/1/utc_start')['utc_start'])
@@ -227,6 +234,7 @@ def load_visibility_model(
         assert np.all(fs_data['antenna_order']==antenna_order)
         assert fs_data['outrigger_delays']==outrigger_delays
         assert fs_data['refmjd']==refmjd
+    
     except (FileNotFoundError, AssertionError, KeyError):
         print('Creating new fringestopping table.')
         generate_fringestopping_table(
