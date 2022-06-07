@@ -38,8 +38,6 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     ----------
     fhdf5 : file handler
         The hdf5 file to initialize.
-    nbls : int
-        The number of baselines in the correlated data.
     nfreq : int
         The number of frequency channels in the correlated data.
     npol : int
