@@ -6,14 +6,14 @@ Dana Simard, dana.simard@astro.caltech.edu 11/2019
 Casa-based routines for calculating and applying fringe-stopping phases
 to visibilities
 """
-import sys
 import os
 import numpy as np
-import scipy # pylint: disable=unused-import
+import scipy  # noqa
 import casatools as cc
 import astropy.units as u
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
+
 
 def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
     """Calculates uvw coordinates.
@@ -67,7 +67,7 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
     else:
         if (src_epoch == 'HADEC') and (nblt > 1):
             raise TypeError('HA and DEC must be specified at each '
-                           'baseline-time in tobs.')
+                            'baseline-time in tobs.')
         me.doframe(me.direction(src_epoch,
                                 qa.quantity(src_lon.to_value(u.deg), 'deg'),
                                 qa.quantity(src_lat.to_value(u.deg), 'deg')))
@@ -82,14 +82,14 @@ def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
                                     qa.quantity(src_lat[i].to_value(u.deg),
                                                 'deg')))
         bl = me.baseline('itrf', qa.quantity(blen[i, 0], 'm'),
-                          qa.quantity(blen[i, 1], 'm'),
-                          qa.quantity(blen[i, 2], 'm'))
+                         qa.quantity(blen[i, 1], 'm'),
+                         qa.quantity(blen[i, 2], 'm'))
         # Get the uvw coordinates
         try:
             buvw[i, :] = me.touvw(bl)[1]['value']
         except KeyError:
             contains_nans = True
-            buvw[i, :] = np.ones(3)*np.nan
+            buvw[i, :] = np.ones(3) * np.nan
     if contains_nans:
         print('Warning: some solutions not found for u, v, w coordinates')
     return buvw
@@ -136,16 +136,16 @@ def generate_fringestopping_table(
             refidxs += [i]
 
     # Get the geometric delays at the "source" position and meridian
-    dt = np.arange(nint)*tsamp
-    dt = dt-np.median(dt)
-    hangle = dt*360/ct.SECONDS_PER_SIDEREAL_DAY
+    dt = np.arange(nint) * tsamp
+    dt = dt - np.median(dt)
+    hangle = dt * 360 / ct.SECONDS_PER_SIDEREAL_DAY
     _bu, _bv, bw = calc_uvw(
-        blen, mjd0+dt/ct.SECONDS_PER_DAY, "HADEC", hangle*u.deg,
-        np.ones(hangle.shape)*(pt_dec*u.rad).to(u.deg))
+        blen, mjd0 + dt / ct.SECONDS_PER_DAY, "HADEC", hangle * u.deg,
+        np.ones(hangle.shape) * (pt_dec * u.rad).to(u.deg))
     _bu, _bv, bwref = calc_uvw(
-        blen, mjd0, "HADEC", 0.*u.deg, (pt_dec*u.rad).to(u.deg))
+        blen, mjd0, "HADEC", 0. * u.deg, (pt_dec * u.rad).to(u.deg))
     ant_bw = bwref[refidxs]
-    bw = bw-bwref
+    bw = bw - bwref
     bw = bw.T
     bwref = bwref.T
 
@@ -156,8 +156,8 @@ def generate_fringestopping_table(
         bw[:, i] += ant_bw[antenna_order.index(int(ant2)), :] - \
             ant_bw[antenna_order.index(int(ant1)), :]
         # Add in outrigger delays
-        bw[:, i] += (outrigger_delays.get(int(ant1), 0) - \
-            outrigger_delays.get(int(ant2), 0))*0.29979245800000004
+        bw[:, i] += (outrigger_delays.get(int(ant1), 0) -
+                     outrigger_delays.get(int(ant2), 0)) * 0.29979245800000004
 
     # Save the fringestopping table
     if os.path.exists(outname):
@@ -165,6 +165,7 @@ def generate_fringestopping_table(
     np.savez(
         outname, dec_rad=pt_dec, tsamp_s=tsamp, ha=hangle, bw=bw, bwref=bwref,
         antenna_order=antenna_order, outrigger_delays=outrigger_delays, ant_bw=ant_bw)
+
 
 def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     """Creates the visibility model from the fringestopping table.
@@ -185,9 +186,10 @@ def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     """
     data = np.load(fstable)
     bws = data['bw']
-    vis_model = np.exp(2j*np.pi/ct.C_GHZ_M*fobs[:, np.newaxis]*
+    vis_model = np.exp(2j * np.pi / ct.C_GHZ_M * fobs[:, np.newaxis] *
                        bws[np.newaxis, :, :, np.newaxis, np.newaxis])
     return vis_model
+
 
 def fringestop_on_zenith(vis, vis_model, nans=False):
     """Performs meridian fringestopping.
@@ -214,8 +216,8 @@ def fringestop_on_zenith(vis, vis_model, nans=False):
     """
     nint = vis_model.shape[1]
     nt, nbl, nchan, npol = vis.shape
-    assert nt%nint == 0, ('Number of times in the visibility file must be '
-                          'divisible by nint')
+    assert nt % nint == 0, ('Number of times in the visibility file must be '
+                            'divisible by nint')
     vis = vis.reshape(-1, nint, nbl, nchan, npol)
     vis /= vis_model
     if nans:
@@ -224,7 +226,6 @@ def fringestop_on_zenith(vis, vis_model, nans=False):
 
     else:
         vis = np.mean(vis, axis=1)
-        nsamples = np.ones(vis.shape)*nint
+        nsamples = np.ones(vis.shape) * nint
 
     return vis, nsamples
-

@@ -32,7 +32,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
         samples_per_frame_out, nint, nfreq_int, antenna_order, pt_dec, \
         tsamp, fringestop, filelength_minutes, outrigger_delays, refmjd = \
         pu.parse_params(param_file)
-    nbls = (nant*(nant+1))//2
+    nbls = (nant * (nant + 1)) // 2
     key = int(f"0x{key_string}", 16)
 
     hostname = socket.gethostname()
@@ -60,10 +60,10 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
 
     if test:
         # Setup the dada buffer for testing
-        sample_rate = 1/0.134217728
+        sample_rate = 1 / 0.134217728
         header_size = 4096
-        buffer_size = int(4*nbls*npol*nchan*samples_per_frame*2)
-        data_rate = buffer_size*(sample_rate/samples_per_frame)/1e6
+        buffer_size = int(4 * nbls * npol * nchan * samples_per_frame * 2)
+        data_rate = buffer_size * (sample_rate / samples_per_frame) / 1e6
         with subprocess.Popen(
                 ["dada_db", "-a", str(header_size), "-b", str(buffer_size), "-k", key_string],
                 stdout=subprocess.PIPE,
@@ -88,7 +88,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
             stderr=subprocess.PIPE)
 
     # Get the start time and the sample time from the reader
-    sample_rate_out = 1/(tsamp*nint)
+    sample_rate_out = 1 / (tsamp * nint)
 
     # Read in psrdada buffer, fringestop, and write to uvh5
     dada_to_uvh5(
