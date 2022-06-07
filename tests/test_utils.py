@@ -5,20 +5,7 @@ from astropy.units import Quantity
 
 import dsacalib.constants as ct
 import dsamfs.utils as du
-
-_config = None
-config_file = "./test_config.yaml"
-
-
-def get_config(key):
-    global
-    if not _config:
-        with open(config_file) as f:
-            _config = yaml.Load(f, Loader=yaml.FullLoader)
-        _config['nbl'] = (_config[nant]*_config[nant]+1)//2
-
-    return _config[key]
-
+from .utils import get_config
 
 def test_get_delays():
     nant = get_config('nant')
@@ -41,6 +28,7 @@ def test_get_time():
 def test_read_header():
     pass
     # Need to set up a reader
+    # Do locally
     # tstart, tsamp = du.read_header(reader)
     # assert isinstance(tstart, float)
     # assert isinstance(tsamp, float)
@@ -49,6 +37,7 @@ def test_read_header():
 def test_read_buffer():
     pass
     # Need to set up a reader
+    # Do locally
     # nbl = get_config('nbl')
     # nchan = get_config('nchan')
     # npol = get_config('npol')
@@ -112,31 +101,21 @@ def load_antenna_delays(tmpdir: str):
 
 
 def test_baseline_uvw():
-    antenna_order = [1, 2, 3]
-    pt_dec = 0.5
-    refmjd = 55000.
+    antenna_order = get_config('antenna_order')
+    pt_dec = get_config('pt_dec')
+    refmjd = get_config('refmjd')
+
+    expected_bname = get_config('bname')
+    expected_blen = get_config('blen')
+    expected_uvw = get_config('uvw')
+
     bname, blen, uvw = du.baseline_uvw(antenna_order, pt_dec, refmjd)
 
-    assert list(bname) == ['1-1', '1-2', '2-2', '1-3', '2-3', '3-3']
+    assert list(bname) == expected_bname
     assert np.allclose(
-        np.array(blen, dtype=float) - np.array(
-            [[0.0, 0.0, 0.0],
-            [5.06461388990283, -2.7253728806972504, 0.0],
-            [0.0, 0.0, 0.0],
-            [10.12923085829243, -5.450740030966699, 0.0],
-            [5.0646169683896005, -2.7253671502694488, 0.0],
-            [0.0, 0.0, 0.0]], dtype=float),
-        0.)
+        np.array(blen, dtype=float) - np.array(expcted_blen, dtype=float), 0.)
 
-    assert np.allclose(
-        uvw - np.array(
-            [[[ 8.80488684e-13,  2.27665376e-13, -4.15822262e-13],
-            [ 5.75134430e+00,  3.14439832e-03,  2.29799124e-04],
-            [ 8.80488684e-13,  2.27665376e-13, -4.15822262e-13],
-            [ 1.15026886e+01,  6.29191529e-03,  4.53889584e-04],
-            [ 5.75134429e+00,  3.14751697e-03,  2.24090460e-04],
-            [ 8.80488684e-13,  2.27665376e-13, -4.15822262e-13]]]),
-        0.)
+    assert np.allclose(uvw - expected_uvw, 0.)
 
 
 def test_parse_params():

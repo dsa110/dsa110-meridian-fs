@@ -217,7 +217,6 @@ def fringestop_on_zenith(vis, vis_model, nans=False):
     assert nt%nint == 0, ('Number of times in the visibility file must be '
                           'divisible by nint')
     vis = vis.reshape(-1, nint, nbl, nchan, npol)
-    print(vis.shape, vis_model.shape)
     vis /= vis_model
     if nans:
         nsamples = np.count_nonzero(~np.isnan(vis), axis=1)
@@ -226,64 +225,6 @@ def fringestop_on_zenith(vis, vis_model, nans=False):
     else:
         vis = np.mean(vis, axis=1)
         nsamples = np.ones(vis.shape)*nint
+
     return vis, nsamples
 
-def write_fs_delay_table(msname, source, blen, tobs, nant):
-    """Writes the fringestopping delays to a delay calibration table.
-
-    Not tested. Table is written to `msname`_`cal.name`_fscal
-
-    Parameters
-    ----------
-    msname : str
-        The prefix of the ms for which this table is generated.
-    source : src class instance
-        The source (or location) to fringestop on.
-    blen : ndarray
-        The ITRF coordinates of the baselines. Dimensions (baselines, 3).
-    tobs : array
-        The observation time of each time bin in mjd.
-    nant : int
-        The number of antennas in the array.
-    """
-    nt = tobs.shape[0]
-    _bu, _bv, bw = calc_uvw(blen, tobs, source.epoch, source.ra, source.dec)
-
-    ant_delay = np.zeros((nt, nant))
-    ant_delay[:, 1:] = bw[:nant-1, :].T/ct.C_GHZ_M #pylint: disable=unsubscriptable-object
-
-    error = 0
-    tb = cc.table()
-    error += not tb.open('{0}/templatekcal'.format(ct.PKG_DATA_PATH))
-    error += not tb.copy('{0}_{1}_fscal'.format(msname, source.name))
-    error += not tb.close()
-
-    error += not tb.open('{0}_{1}_fscal'.format(msname, source.name),
-                         nomodify=False)
-    error += not tb.addrows(nant*nt-tb.nrows())
-    error += not tb.flush()
-    assert tb.nrows() == nant*nt
-    error += not tb.putcol(
-        'TIME', np.tile((tobs*u.d).to_value(u.s).reshape(-1, 1),
-                        (1, nant)).flatten())
-    error += not tb.putcol('FIELD_ID', np.zeros(nt*nant, dtype=np.int32))
-    error += not tb.putcol(
-        'SPECTRAL_WINDOW_ID', np.zeros(nt*nant, dtype=np.int32))
-    error += not tb.putcol(
-        'ANTENNA1', np.tile(np.arange(nant, dtype=np.int32).reshape(1, nant),
-                            (nt, 1)).flatten())
-    error += not tb.putcol('ANTENNA2', -1*np.ones(nt*nant, dtype=np.int32))
-    error += not tb.putcol('INTERVAL', np.zeros(nt*nant, dtype=np.int32))
-    error += not tb.putcol('SCAN_NUMBER', np.ones(nt*nant, dtype=np.int32))
-    error += not tb.putcol('OBSERVATION_ID', np.zeros(nt*nant, dtype=np.int32))
-    error += not tb.putcol(
-        'FPARAM', np.tile(ant_delay.reshape(1, -1), (2, 1)).reshape(2, 1, -1))
-    error += not tb.putcol(
-        'PARAMERR', np.zeros((2, 1, nt*nant), dtype=np.float32))
-    error += not tb.putcol('FLAG', np.zeros((2, 1, nt*nant), dtype=bool))
-    error += not tb.putcol('SNR', np.zeros((2, 1, nt*nant), dtype=np.float64))
-    error += not tb.flush()
-    error += not tb.close()
-
-    if error > 0:
-        sys.stderr.write('{0} errors occured during calibration'.format(error))
