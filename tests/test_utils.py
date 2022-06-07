@@ -69,21 +69,21 @@ def test_integrate():
     data = np.ones((nt, nbls, nchan, npol), dtype=complex)
     outdata = du.integrate(data, nint)
     assert np.allclose(data, nint+0j)
-    assert outdata.shape == (nt///nint, nbl, nchan, npol)
+    assert outdata.shape == (nt//nint, nbl, nchan, npol)
 
 
 def test_load_visibility_model(tmpdir: str):
     pass
     # fs_table = f"{tmpdir}/fs_table.npz"
     # blen
-    # nint = 
-    # fobs 
+    # nint =
+    # fobs
     # pt_dec
     # tsamp
     # antenna_order
     # outrigger_delays
     # bname
-    # refmjd 
+    # refmjd
 
     # vis_model = du.load_visibility_model(
     #     fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order, outrigger_delays, bname, refmjd)
@@ -94,10 +94,10 @@ def test_load_visibility_model(tmpdir: str):
 def load_antenna_delays(tmpdir: str):
     pass
     # ant_delay_table =
-    # nant = 
-    # npol = 
+    # nant =
+    # npol =
     # bl_delays = du.load_antenna_delays(ant_delay_table, nant, npol)
-    # assert bl_delays.shape == 
+    # assert bl_delays.shape ==
 
 
 def test_baseline_uvw():

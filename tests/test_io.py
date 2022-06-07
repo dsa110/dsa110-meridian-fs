@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+from pyuvdata import UVData
 
 from .utils import get_config
 from dsamfs import io
@@ -61,7 +62,7 @@ def test_update_uvh5_file(tmpdir: str):
         assert fhdf5["Header"]["time_array"].shape == (nt*nbl)
         assert fhdf5["Header"]["ant_1_array"].shape == (nt*nbl)
 
-    Uv = UVData()
+    UV = UVData()
     UV.read(f"{tmpdir}/test.hdf5")
     data = UV.data_array
     assert data.shape == (nt*nbl, 1, nchan, npol)
