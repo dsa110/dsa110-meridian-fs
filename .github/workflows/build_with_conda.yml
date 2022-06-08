@@ -13,7 +13,35 @@ jobs:
       max-parallel: 5
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+      with:
+        path: dsa110-meridian-fs
+        fetch-depth: 0
+    - name: Checkout antpos
+      uses: actions/checkout@v3
+      with:
+        repository: dsa110/dsa110-antpos
+        path: dsa110-antpos
+        fetch-depth: 0
+    - name: Checkout pyuvdata 
+      uses: actions/checkout@v3
+      with:
+        repository: dsa110/pyuvdata
+        path: pyuvdata
+        fetch-depth: 0
+    - name: Checkout dsa110-calib
+      uses: actions/checkout@v3
+      with:
+        repository: dsa110/dsa110-calib
+        path: dsa110-calib
+        fetch-depth: 0
+    - name: Checkout pyutils
+      uses: actions/checkout@v3
+      with:
+        repository: dsa110/dsa110-pyutils
+        path: dsa110-pyutils
+        fetch-depth: 0
     - name: Set up Python 3.8
       uses: actions/setup-python@v3
       with:
@@ -24,33 +52,17 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        conda env update --file environment.yml --name base
-        git clone https://github.com/dsa110/dsa110-antpos
-        cd dsa110-antpos
-        pip install -r requirements.txt
-        pip install .
-        cd ..
-        git clone https://github.com/dsa110/dsa110-pyutils
-        cd dsa110-pyutils
-        pip install .
-        cd ..
-        git clone https://github.com/dsa110/pyuvdata
-        cd pyuvdata
-        pip install .
-        cd ..
-        python setup.py develop --no-deps
-        git clone https://github.com/dsa110/dsa110-calib
-        cd dsa110-calib
-        pip install .
-        cd ..
-    - name: Lint with flake8
+        conda env update --file $GITHUB_WORKSPACE/dsa110-meridian-fs/environment.yml --name base
+    - name: Install dsa110 dependencies
       run: |
-        conda install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        cd $GITHUB_WORKSPACE/dsa110-pyutils ; git fetch --tags --force ; python setup.py install
+        cd $GITHUB_WORKSPACE/dsa110-antpos ; git fetch --tags --force ; python setup.py install 
+        cd $GITHUB_WORKSPACE/pyuvdata ; git fetch --tags --force ; pip install .
+        cd $GITHUB_WORKSPACE/dsa110-calib ; git fetch --tags --force ; python setup.py install
+    - name: Install
+      run: |
+        cd $GITHUB_WORKSPACE/dsa110-meridian-fs ; git fetch --tags --force ; python setup.py install
     - name: Test with pytest
       run: |
         conda install pytest
-        pytest
+        pytest $GITHUB_WORKSPACE/dsa110-meridian-fs/tests
