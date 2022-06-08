@@ -6,7 +6,6 @@ Dana Simard, dana.simard@astro.caltech.edu 11/2019
 Casa-based routines for calculating and applying fringe-stopping phases
 to visibilities
 """
-import sys
 import os
 import numpy as np
 import scipy # pylint: disable=unused-import
@@ -227,4 +226,3 @@ def fringestop_on_zenith(vis, vis_model, nans=False):
         nsamples = np.ones(vis.shape)*nint
 
     return vis, nsamples
-

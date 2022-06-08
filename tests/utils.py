@@ -6,12 +6,14 @@ config_file = "./test_config.yaml"
 
 
 def get_config(key):
-    global
+    global _config
     if not _config:
         with open(config_file) as f:
-            _config = yaml.Load(f, Loader=yaml.FullLoader)
-        _config['nbl'] = (_config[nant]*_config[nant]+1)//2
-        _config['uvw'] = np.array(_config['uvw'])[np.newaxis, ...]
-        _config['blen'] = np.array(_config['blen'])
+            config = yaml.load(f, Loader=yaml.FullLoader)
+        config['nbl'] = (config['nant'] * config['nant'] + 1) // 2
+        config['uvw'] = np.array(config['uvw'])[np.newaxis, ...]
+        config['blen'] = np.array(config['blen'])
+
+        _config = config
 
     return _config[key]

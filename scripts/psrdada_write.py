@@ -37,7 +37,7 @@ def main():
         "/home/ubuntu/proj/dsa110-shell/dsa110-meridian-fs/dsamfs/data/test_parameters.yaml "
         "/home/ubuntu/proj/dsa110-shell/dsa110-meridian-fs/dsamfs/data/test_header.txt")
 
-    with open("/home/ubuntu/data/tmp/write.log", 'w') as read_log:
+    with open("/home/ubuntu/data/tmp/write.log", 'w', encoding='utf-8') as read_log:
         with subprocess.Popen(read, shell=True, stdout=read_log, stderr=read_log) as _read_proc:
             print("Reader started")
             sleep(0.1)

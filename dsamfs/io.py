@@ -71,9 +71,9 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     header["telescope_name"] = np.string_("OVRO_MMA")
     header["instrument"] = np.string_("DSA")
     header["object_name"] = np.string_("search")
-    header["history"] = np.string_("written by dsa110-meridian-fringestopping "
-                                   "on {0}".format(datetime.now().strftime(
-                                       '%Y-%m-%dT%H:%M:%S')))
+    header["history"] = np.string_(
+        "written by dsa110-meridian-fringestopping on "
+        f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}")
     header["phase_type"] = np.string_("drift")
     header["phase_center_app_dec"] = pt_dec
     header["Nants_data"] = len(antenna_order)
@@ -86,10 +86,10 @@ def initialize_uvh5_file(fhdf, nfreq, npol, pt_dec, antenna_order, fobs,
     header.create_dataset(
         "ant_2_array", (0, ), maxshape=(None, ), dtype=np.int,
         chunks=True, data=None)
-    antenna_names = np.array(['{0}'.format(ant_no+1) for ant_no in
-                              range(nants_telescope)], dtype="S4")
-    header.create_dataset("antenna_names", (nants_telescope, ), dtype="S4",
-                          data=antenna_names)
+    antenna_names = np.array(
+        [f'{ant_no+1}' for ant_no in range(nants_telescope)], dtype="S4")
+    header.create_dataset(
+        "antenna_names", (nants_telescope, ), dtype="S4", data=antenna_names)
     header["antenna_numbers"] = np.arange(nants_telescope)
     header["Nbls"] = ((header["Nants_data"][()]+1)*
                       header["Nants_data"][()])//2
@@ -256,8 +256,8 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
     Reads dada buffer and writes to uvh5 file.
     """
     if nfreq_int > 1:
-        assert nchan%nfreq_int == 0, ("Number of channels must be an integer "
-                                      "number of output channels.")
+        assert nchan%nfreq_int == 0, (
+            "Number of channels must be an integer number of output channels.")
         fobs = np.median(fobs.reshape(-1, nfreq_int), axis=1)
         nchan = len(fobs)
 
@@ -269,11 +269,10 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
         now = datetime.utcnow()
         fout = now.strftime("%Y-%m-%dT%H:%M:%S")
         if outdir is not None:
-            fout = '{0}/{1}'.format(outdir, fout)
-        print('Opening output file {0}.hdf5'.format(fout))
-        with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
-            initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
-                                 fobs, fs_table)
+            fout = f"{outdir}/{fout}"
+        with h5py.File(f"{fout}_incomplete.hdf5", 'w') as fhdf5:
+            initialize_uvh5_file(
+                fhdf5, nchan, npol, pt_dec, antenna_order, fobs, fs_table)
 
             idx_frame_file = 0 # number of fsed frames write to curent file
             while (idx_frame_file < max_frames_per_file) and (not nans):
@@ -286,11 +285,10 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                         data_in[i, ...] = pu.read_buffer(
                             reader, nbls, nchan*nfreq_int, npol)
                     except (AssertionError, ValueError, PSRDadaError) as e:
-                        print('Last integration has {0} timesamples'.format(i))
-                        logger.info('Disconnected from buffer with message'
-                                    '{0}:\n{1}'.
-                                    format(type(e).__name__, ''.join(
-                                        traceback.format_tb(e.__traceback__))))
+                        print(f"Last integration has {i} timesamples")
+                        logger.info(
+                            f"Disconnected from buffer with message {type(e).__name__}:\n"
+                            f"{''.join(traceback.format_tb(e.__traceback__))}")
                         nans = True
                         break
 
@@ -328,8 +326,8 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
 
                 idx_frame_out += 1
                 idx_frame_file += 1
-                print('Integration {0} done'.format(idx_frame_out))
-        os.rename('{0}_incomplete.hdf5'.format(fout), '{0}.hdf5'.format(fout))
+                print(f"Integration {idx_frame_out} done")
+        os.rename(f"{fout}_incomplete.hdf5", f"{fout}.hdf5")
         try:
             etcd.put_dict(
                 '/cmd/cal',
@@ -338,12 +336,12 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                     'val':
                     {
                         'hostname': hostname,
-                        'filename': '{0}.hdf5'.format(fout)
+                        'filename': f"{fout}.hdf5"
                     }
                 }
             )
         except:
-            logger.info('Could not reach ETCD to transfer {0} from {1}'.format(fout, hostname))
+            logger.error(f"Could not reach ETCD to transfer {fout} from {hostname}")
     try:
         reader.disconnect()
     except PSRDadaError:

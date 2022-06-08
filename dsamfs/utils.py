@@ -63,11 +63,11 @@ def get_delays(antenna_order: np.ndarray, nants: int):
         nant_lastsnap = nant_snap
 
     for i in range(0, nsnaps):
-        logger.info('getting delays for snap {0} of {1}'.format(i+1, nsnaps))
+        LOGGER.info(f"getting delays for snap {i+1} of {1}")
         try:
             snap_delays = np.array(
                 ETCD.get_dict(
-                    '/mon/snap/{0}/delays'.format(i+1)
+                    f"/mon/snap/{i+1}/delays"
                 )['delays']
             )*2
             snap_delays = snap_delays.reshape(3, 2)[
@@ -75,7 +75,7 @@ def get_delays(antenna_order: np.ndarray, nants: int):
             delays[(antenna_order-1)[i*3:(i+1)*3], :] = snap_delays
 
         except (AttributeError, TypeError) as e:
-            logger.error('delays not set for snap{0}'.format(i+1))
+            LOGGER.error(f"delays not set for snap{i+1}")
 
     return delays
 
@@ -83,7 +83,6 @@ def get_time():
     """
     Gets the start time of the first spectrum from etcd.
     """
-    etcd = dsa_store.
     try:
         ret_time = (ETCD.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
                     +float(ETCD.get_dict('/mon/snap/1/utc_start')['utc_start'])
@@ -143,8 +142,7 @@ def read_buffer(reader, nbls, nchan, npol):
     try:
         data = data.reshape(-1, nbls, nchan, npol)
     except ValueError:
-        print('incomplete data: {0} out of {1} samples'.format(
-            data.shape[0]%(nbls*nchan*npol), nbls*nchan*npol))
+        print(f"incomplete data: {data.shape[0]%(nbls*nchan*npol)} out of {nbls*nchan*npol} samples")
         data = data[
             :data.shape[0]//(nbls*nchan*npol)*(nbls*nchan*npol)
             ].reshape(-1, nbls, nchan, npol)
@@ -234,7 +232,7 @@ def load_visibility_model(
         assert np.all(fs_data['antenna_order']==antenna_order)
         assert fs_data['outrigger_delays']==outrigger_delays
         assert fs_data['refmjd']==refmjd
-    
+
     except (FileNotFoundError, AssertionError, KeyError):
         print('Creating new fringestopping table.')
         generate_fringestopping_table(
@@ -323,7 +321,7 @@ def parse_params(param_file=None):
         The full path to the yaml parameter file.
     """
     if param_file is not None:
-        with open(param_file) as fhand:
+        with open(param_file, encoding="utf-8") as fhand:
             corr_cnf = yaml.safe_load(fhand)
         mfs_cnf = corr_cnf
 
@@ -357,7 +355,7 @@ def parse_params(param_file=None):
         ch0 = corr_cnf['ch0'][hname]
     except KeyError:
         ch0 = 3400
-        LOGGER.error('host {0} not in correlator'.format(hname))
+        LOGGER.error(f"host {hname} not in correlator")
     nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0+nchan_spw]
     filelength_minutes = mfs_cnf['filelength_minutes']

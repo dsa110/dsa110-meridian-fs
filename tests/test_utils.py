@@ -1,11 +1,12 @@
-import yaml
 import socket
+import numpy as np
 from astropy.time import Time
 from astropy.units import Quantity
+import astropy.units as u
 
 import dsacalib.constants as ct
 import dsamfs.utils as du
-from .utils import get_config
+from utils import get_config
 
 def test_get_delays():
     nant = get_config('nant')
@@ -13,7 +14,7 @@ def test_get_delays():
 
     delays = du.get_delays(antenna_order, nant)
 
-    assert isinstance(delays.ravel()[0], int)
+    int(delays.ravel()[0])
     assert delays.shape == (nant, 2)
 
 
@@ -55,7 +56,7 @@ def test_update_time():
     t, tstart2 = du.update_time(tstart, samples_per_frame, sample_rate)
 
     assert tstart2 > t[-1]
-    assert abs((tstart2 - t[-1]) - 1) < 1e-3
+    assert abs((tstart2 - t[-1]) - 1/ct.SECONDS_PER_DAY) < 1e-3
     assert abs((tstart - t[0])) < 1e-3
 
 
@@ -66,10 +67,10 @@ def test_integrate():
     nchan = get_config('nchan')
     npol = get_config('npol')
 
-    data = np.ones((nt, nbls, nchan, npol), dtype=complex)
+    data = np.ones((nt, nbl, nchan, npol), dtype=complex)
     outdata = du.integrate(data, nint)
-    assert np.allclose(data, nint+0j)
-    assert outdata.shape == (nt//nint, nbl, nchan, npol)
+    assert np.allclose(outdata, 1.+0j)
+    assert outdata.shape == (nt // nint, nbl, nchan, npol)
 
 
 def test_load_visibility_model(tmpdir: str):
@@ -112,10 +113,8 @@ def test_baseline_uvw():
     bname, blen, uvw = du.baseline_uvw(antenna_order, pt_dec, refmjd)
 
     assert list(bname) == expected_bname
-    assert np.allclose(
-        np.array(blen, dtype=float) - np.array(expcted_blen, dtype=float), 0.)
-
-    assert np.allclose(uvw - expected_uvw, 0.)
+    assert np.allclose(np.array(blen, dtype=float), expected_blen)
+    assert np.allclose(uvw, expected_uvw)
 
 
 def test_parse_params():
@@ -129,7 +128,7 @@ def test_parse_params():
 
 def test_get_pointing_declination():
     if socket.gethostname() == get_config('localhost'):
-        pointing = du.test_get_pointing_declination()
+        pointing = du.get_pointing_declination()
         assert isinstance(pointing, Quantity)
         assert -90*u.deg <= pointing <= 90*u.deg
 
