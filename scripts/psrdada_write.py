@@ -13,17 +13,18 @@ KEY = 0xadad
 NANT = 64
 NCHAN = 384
 NPOL = 2
-NBLS = NANT*(NANT+1)//2
+NBLS = NANT * (NANT + 1) // 2
+
 
 def main():
     """Writes a psrdada buffer for test"""
-    vis_temp = np.arange(NBLS*NCHAN*NPOL*2, dtype=np.float32)
+    vis_temp = np.arange(NBLS * NCHAN * NPOL * 2, dtype=np.float32)
 
     # Define the data rate, including the buffer size
     # and the header size
     samples_per_frame = 1
     header_size = 4096
-    buffer_size = int(4*NBLS*NPOL*NCHAN*samples_per_frame*2)
+    buffer_size = int(4 * NBLS * NPOL * NCHAN * samples_per_frame * 2)
     assert buffer_size == vis_temp.nbytes, (
         "Sample data size and buffer size do not match.")
 
@@ -60,6 +61,7 @@ def main():
             writer.disconnect()
 
     os.system(f"dada_db -d -k {KEY_STRING}")
+
 
 if __name__ == "__main__":
     main()

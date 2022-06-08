@@ -15,12 +15,12 @@ def test_calc_uvw_blt():
     antenna_order = get_config('antenna_order')
     nant = len(antenna_order)
     nt = get_config('nt')
-    nbl = (nant*(nant+1))//2
+    nbl = (nant * (nant + 1)) // 2
     tobs = get_config('refmjd') + np.arange(nt) / ct.SECONDS_PER_DAY
     df_bls = utils.get_baselines(antenna_order, autocorrs=True, casa_order=False)
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
-    ra = 14.31225787*u.hourangle
-    dec = get_config('pt_dec')*u.rad
+    ra = 14.31225787 * u.hourangle
+    dec = get_config('pt_dec') * u.rad
     uvw_blt = fringestopping.calc_uvw_blt(np.tile(blen[np.newaxis, :, :],
                                                   (nt, 1, 1)).reshape(-1, 3),
                                           np.tile(tobs[:, np.newaxis],
@@ -28,21 +28,21 @@ def test_calc_uvw_blt():
                                           'J2000', ra, dec)
     uu, vv, ww = calc_uvw(blen, tobs, 'J2000', ra, dec)
     print(uvw_blt.shape, uu.T.shape)
-    assert np.all(np.abs(uvw_blt[:, 0]-uu.T.flatten()) < 1e-6)
-    assert np.all(np.abs(uvw_blt[:, 1]-vv.T.flatten()) < 1e-6)
-    assert np.all(np.abs(uvw_blt[:, 2]-ww.T.flatten()) < 1e-6)
+    assert np.all(np.abs(uvw_blt[:, 0] - uu.T.flatten()) < 1e-6)
+    assert np.all(np.abs(uvw_blt[:, 1] - vv.T.flatten()) < 1e-6)
+    assert np.all(np.abs(uvw_blt[:, 2] - ww.T.flatten()) < 1e-6)
 
     uvw_blt = fringestopping.calc_uvw_blt(np.tile(blen[np.newaxis, :, :],
                                                   (nt, 1, 1)).reshape(-1, 3),
                                           np.tile(tobs[:, np.newaxis],
                                                   (1, nbl)).flatten(),
                                           'HADEC',
-                                          np.zeros(nt*nbl)*u.rad,
-                                          np.ones(nt*nbl)*dec)
-    uu, vv, ww = calc_uvw(blen, tobs, 'HADEC', np.zeros(nt)*u.rad, np.ones(nt)*dec)
-    assert np.all(np.abs(uvw_blt[:, 0]-uu.T.flatten()) < 1e-6)
-    assert np.all(np.abs(uvw_blt[:, 1]-vv.T.flatten()) < 1e-6)
-    assert np.all(np.abs(uvw_blt[:, 2]-ww.T.flatten()) < 1e-6)
+                                          np.zeros(nt * nbl) * u.rad,
+                                          np.ones(nt * nbl) * dec)
+    uu, vv, ww = calc_uvw(blen, tobs, 'HADEC', np.zeros(nt) * u.rad, np.ones(nt) * dec)
+    assert np.all(np.abs(uvw_blt[:, 0] - uu.T.flatten()) < 1e-6)
+    assert np.all(np.abs(uvw_blt[:, 1] - vv.T.flatten()) < 1e-6)
+    assert np.all(np.abs(uvw_blt[:, 2] - ww.T.flatten()) < 1e-6)
 
 
 def test_generate_fringestopping_table(tmpdir: str):
@@ -82,11 +82,11 @@ def test_zenith_visibility_mode(tmpdir: str):
         get_config('deltaf_MHz') / 1e3 * np.arange(get_config('nchan')))
     nint = get_config('nint')
     nant = len(get_config('antenna_order'))
-    nbl = (nant*(nant+1))//2
+    nbl = (nant * (nant + 1)) // 2
     nchan = get_config('nchan')
     f0_GHz = get_config('f0_GHz')
-    deltaf_GHz = get_config('deltaf_MHz')/1e3
-    fobs = f0_GHz + deltaf_GHz*np.arange(nchan)
+    deltaf_GHz = get_config('deltaf_MHz') / 1e3
+    fobs = f0_GHz + deltaf_GHz * np.arange(nchan)
 
     if not os.path.exists(f"{tmpdir}/fs_table.npz"):
         test_generate_fringestopping_table(tmpdir)

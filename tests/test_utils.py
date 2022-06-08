@@ -8,9 +8,10 @@ import dsacalib.constants as ct
 import dsamfs.utils as du
 from utils import get_config
 
+
 def test_get_delays():
     nant = get_config('nant')
-    antenna_order = range(1, nant+1)
+    antenna_order = range(1, nant + 1)
 
     delays = du.get_delays(antenna_order, nant)
 
@@ -23,7 +24,7 @@ def test_get_time():
     assert time > 55499.0
 
     if socket.gethostname() == get_config('localhost'):
-        assert time > (Time.now() - 30*u.d).mjd
+        assert time > (Time.now() - 30 * u.d).mjd
 
 
 def test_read_header():
@@ -49,14 +50,14 @@ def test_read_buffer():
 
 
 def test_update_time():
-    tstart = Time.now().mjd*ct.SECONDS_PER_DAY
+    tstart = Time.now().mjd * ct.SECONDS_PER_DAY
     samples_per_frame = 16
     sample_rate = 1.
 
     t, tstart2 = du.update_time(tstart, samples_per_frame, sample_rate)
 
     assert tstart2 > t[-1]
-    assert abs((tstart2 - t[-1]) - 1/ct.SECONDS_PER_DAY) < 1e-3
+    assert abs((tstart2 - t[-1]) - 1 / ct.SECONDS_PER_DAY) < 1e-3
     assert abs((tstart - t[0])) < 1e-3
 
 
@@ -69,7 +70,7 @@ def test_integrate():
 
     data = np.ones((nt, nbl, nchan, npol), dtype=complex)
     outdata = du.integrate(data, nint)
-    assert np.allclose(outdata, 1.+0j)
+    assert np.allclose(outdata, 1. + 0j)
     assert outdata.shape == (nt // nint, nbl, nchan, npol)
 
 
@@ -87,7 +88,8 @@ def test_load_visibility_model(tmpdir: str):
     # refmjd
 
     # vis_model = du.load_visibility_model(
-    #     fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order, outrigger_delays, bname, refmjd)
+    #     fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order, outrigger_delays, bname,
+    #     refmjd)
 
     # assert vismodel.shape == ()
 
@@ -126,11 +128,13 @@ def test_parse_params():
         for i, param in enumerate(params):
             assert isinstance(param, param_types[i])
 
+
 def test_get_pointing_declination():
     if socket.gethostname() == get_config('localhost'):
         pointing = du.get_pointing_declination()
         assert isinstance(pointing, Quantity)
-        assert -90*u.deg <= pointing <= 90*u.deg
+        assert -90 * u.deg <= pointing <= 90 * u.deg
+
 
 def test_put_outrigger_delays():
     # No test because we don't have an etcd sandbox
