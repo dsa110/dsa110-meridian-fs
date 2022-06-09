@@ -21,12 +21,6 @@ import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
 
-etcd = ds.DsaStore()
-
-logger = dsl.DsaSyslogger()
-logger.subsystem("software")
-logger.app("dsamfs")
-
 
 def initialize_uvh5_file(
         fhdf, nfreq, npol, pt_dec, antenna_order, fobs, fs_table=None):
@@ -258,6 +252,13 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     """
     Reads dada buffer and writes to uvh5 file.
     """
+
+    etcd = ds.DsaStore()
+
+    logger = dsl.DsaSyslogger()
+    logger.subsystem("software")
+    logger.app("dsamfs")
+
     if nfreq_int > 1:
         assert nchan % nfreq_int == 0, (
             "Number of channels must be an integer number of output channels.")

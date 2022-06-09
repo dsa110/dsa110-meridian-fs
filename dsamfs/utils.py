@@ -32,8 +32,6 @@ LOGGER = dsl.DsaSyslogger()
 LOGGER.subsystem("software")
 LOGGER.app("dsamfs")
 
-ETCD = dsa_store.DsaStore()
-
 
 def get_delays(antenna_order: np.ndarray, nants: int):
     """Gets the delays currently set in the sanps.
@@ -44,14 +42,13 @@ def get_delays(antenna_order: np.ndarray, nants: int):
         The order of antennas in the snaps.
     nants : int
         The total number of antennas in the array.
-    logger : int
-        A dsasyslogger instance.
 
     Returns
     -------
     ndarray
         The delays for each antenna/pol in the array.
     """
+    etcd = dsa_store.DsaStore()
     antenna_order = np.array(antenna_order)
     delays = np.zeros((nants, 2), dtype=np.int)
     nant_snap = 3
@@ -66,7 +63,7 @@ def get_delays(antenna_order: np.ndarray, nants: int):
         LOGGER.info(f"getting delays for snap {i+1} of {1}")
         try:
             snap_delays = np.array(
-                ETCD.get_dict(
+                etcd.get_dict(
                     f"/mon/snap/{i+1}/delays"
                 )['delays']
             ) * 2
@@ -85,8 +82,9 @@ def get_time():
     Gets the start time of the first spectrum from etcd.
     """
     try:
-        ret_time = (ETCD.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
-                    + float(ETCD.get_dict('/mon/snap/1/utc_start')['utc_start'])
+        etcd = dsa_store.DsaStore()
+        ret_time = (etcd.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
+                    + float(etcd.get_dict('/mon/snap/1/utc_start')['utc_start'])
                     * 4. * 8.192e-6 / 86400.)
     except:
         ret_time = 55000.0
@@ -386,20 +384,23 @@ def parse_params(param_file=None):
 
 def get_pointing_declination():
     """Gets the pointing declination from etcd."""
-    return ETCD.get_dict("/mon/array/dec")['dec_deg'] * u.deg
+    etcd = dsa_store.DsaStore()
+    return etcd.get_dict("/mon/array/dec")['dec_deg'] * u.deg
 
 
 def put_outrigger_delays(outrigger_delays):
     """Store the current outrigger delays in etcd."""
+    etcd = dsa_store.DsaStore()
     current_mjd = Time(datetime.utcnow()).mjd
 
     for ant in range(1, 118):
         payload = {'time': current_mjd, 'ant_num': ant, 'delay': outrigger_delays.get(str(ant), 0)}
-        ETCD.put_dict(f"/mon/fringe/{ant}", payload)
+        etcd.put_dict(f"/mon/fringe/{ant}", payload)
 
 
 def put_refmjd(refmjd):
     """Store the current reference time in etcd."""
+    etcd = dsa_store.DsaStore()
     current_mjd = Time(datetime.utcnow()).mjd
     payload = {'time': current_mjd, 'ant_num': 0, 'refmjd': refmjd}
-    ETCD.put_dict("/mon/fringe/0", payload)
+    etcd.put_dict("/mon/fringe/0", payload)

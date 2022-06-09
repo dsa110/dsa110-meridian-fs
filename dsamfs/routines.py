@@ -12,11 +12,8 @@ from dsautils import cnf
 import dsamfs.utils as pu
 from dsamfs.io import dada_to_uvh5
 
-logger = dsl.DsaSyslogger()
-logger.subsystem("software")
-logger.app("dsamfs")
 
-def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir=None):
+def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
     ----------
@@ -26,6 +23,10 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
     """
     if working_dir is None:
         working_dir = "/home/ubuntu/data/"
+
+    logger = dsl.DsaSyslogger()
+    logger.subsystem("software")
+    logger.app("dsamfs")
 
     # Read in parameter file
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
