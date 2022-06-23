@@ -16,7 +16,7 @@ logger = dsl.DsaSyslogger()
 logger.subsystem("software")
 logger.app("dsamfs")
 
-def run_fringestopping(param_file=None, header_file=None, output_dir=None):
+def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir="/home/ubuntu/data/"):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
     ----------
@@ -45,8 +45,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     fs_table = (
         f"fringestopping_table_dec{(pt_dec*u.rad).to_value(u.deg):.1f}deg_"
         f"{len(antenna_order)}ant.npz")
-    if output_dir is not None:
-        fs_table = f"{output_dir}/{fs_table}"
+    fs_table = f"{working_dir}/{fs_table}"
     bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, refmjd, casa_order=False)
     vis_model = pu.load_visibility_model(
         fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order, outrigger_delays, bname, refmjd)
