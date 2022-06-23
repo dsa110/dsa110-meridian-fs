@@ -2,12 +2,13 @@
 
 Dana Simard, dana.simard@astro.caltech.edu, 2020
 """
-
+import socket
 import subprocess
 import numpy as np
 import astropy.units as u
 from psrdada import Reader
 import dsautils.dsa_syslog as dsl
+from dsautils import cnf
 import dsamfs.utils as pu
 from dsamfs.io import dada_to_uvh5
 
@@ -31,6 +32,10 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
         pu.parse_params(param_file)
     nbls = (nant*(nant+1))//2
     key = int(f"0x{key_string}", 16)
+
+    hostname = socket.gethostname()
+    conf = cnf.Conf()
+    subband = list(conf.get("corr")['ch0'].keys()).index(hostname)
 
     # Update outrigger delays and refmjd in etcd
     pu.put_outrigger_delays(outrigger_delays)
@@ -89,7 +94,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
         reader, output_dir, nbls, nchan, npol, nint, nfreq_int,
         samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
         fs_table, tsamp, bname, uvw, fobs,
-        vis_model, test, filelength_minutes
+        vis_model, test, filelength_minutes, subband
     )
 
     if test:

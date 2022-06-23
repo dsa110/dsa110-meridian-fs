@@ -253,7 +253,7 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
 def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
                  fs_table, tsamp, bname, uvw, fobs,
-                 vis_model, test, nmins):
+                 vis_model, test, nmins, subband):
     """
     Reads dada buffer and writes to uvh5 file.
     """
@@ -267,9 +267,10 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
     idx_frame_out = 0 # total number of fsed frames, for timekeeping
     max_frames_per_file = int(np.ceil(nmins*60*sample_rate_out))
     hostname = socket.gethostname()
+
     while not nans:
         now = datetime.utcnow()
-        fout = now.strftime("%Y-%m-%dT%H:%M:%S")
+        fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}.hdf5"
         if outdir is not None:
             fout = '{0}/{1}'.format(outdir, fout)
         print('Opening output file {0}.hdf5'.format(fout))
