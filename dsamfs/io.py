@@ -13,7 +13,6 @@ import socket
 import numpy as np
 import h5py
 import astropy.units as u
-from psrdada.exceptions import PSRDadaError
 from antpos.utils import get_itrf
 import dsautils.dsa_syslog as dsl
 import dsautils.dsa_store as ds
@@ -21,6 +20,10 @@ import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
 
+try:
+    from psrdada.exceptions import PSRDadaError
+except:
+    pass
 
 def initialize_uvh5_file(
         fhdf, nfreq, npol, pt_dec, antenna_order, fobs, fs_table=None):
