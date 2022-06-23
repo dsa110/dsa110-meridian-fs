@@ -270,7 +270,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
 
     while not nans:
         now = datetime.utcnow()
-        fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}.hdf5"
+        fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
         if outdir is not None:
             fout = '{0}/{1}'.format(outdir, fout)
         print('Opening output file {0}.hdf5'.format(fout))
