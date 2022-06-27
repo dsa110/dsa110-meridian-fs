@@ -200,7 +200,9 @@ def load_visibility_model(
 
     If the path to the file does not exist or if the model is for a different
     number of integrations or baselines a new model will be created and saved
-    to the file path. TODO: Order  may not be correct! Need to verify the
+    to the file path. 
+    
+    TODO: Order  may not be correct! Need to verify the
     antenna order that the correlator uses.
 
     Parameters
@@ -334,8 +336,8 @@ def parse_params(param_file=None):
     nint = mfs_cnf['nint']
     fringestop = mfs_cnf['fringestop']
     nfreq_int = mfs_cnf['nfreq_int']
-    ant_od = OrderedDict(sorted(corr_cnf['antenna_order'].items()))
-    antenna_order = list(ant_od.values())
+    ant_od = corr_cnf['antenna_order'].items()
+    antenna_order = [int(ad) for ad in list(ant_od.values())]
     dfreq = corr_cnf['bw_GHz']/nchan
     if corr_cnf['chan_ascending']:
         fobs = corr_cnf['f0_GHz']+np.arange(nchan)*dfreq
