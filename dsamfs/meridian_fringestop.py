@@ -24,4 +24,7 @@ if len(sys.argv) > 3:
 else:
     HEADER_FILE = None
 
-run_fringestopping(PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR)
+if len(sys.argv) > 4:
+    WORKING_DIR = sys.argv[4]
+
+run_fringestopping(PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR, working_dir=WORKING_DIR)

@@ -16,7 +16,7 @@ logger = dsl.DsaSyslogger()
 logger.subsystem("software")
 logger.app("dsamfs")
 
-def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir="/home/ubuntu/data/"):
+def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
     ----------
@@ -24,6 +24,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
         The full path to the json parameter file. Defaults to the file
         meridian_fringestopping_parameters.py in the package directory.
     """
+    if working_dir is None:
+        working_dir = "/home/ubuntu/data/"
 
     # Read in parameter file
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
@@ -90,7 +92,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
 
     # Read in psrdada buffer, fringestop, and write to uvh5
     dada_to_uvh5(
-        reader, output_dir, nbls, nchan, npol, nint, nfreq_int,
+        reader, output_dir, working_dir, nbls, nchan, npol, nint, nfreq_int,
         samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
         fs_table, tsamp, bname, uvw, fobs,
         vis_model, test, filelength_minutes, subband

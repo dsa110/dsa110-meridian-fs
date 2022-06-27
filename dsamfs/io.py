@@ -250,7 +250,7 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
     fhdf5["Data"]["nsamples"][old_size:, ...] = nsamples.reshape(
         nt*nbls, 1, nchan, npol)
 
-def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
+def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
                  fs_table, tsamp, bname, uvw, fobs,
                  vis_model, test, nmins, subband):
@@ -271,8 +271,8 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
     while not nans:
         now = datetime.utcnow()
         fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
-        if outdir is not None:
-            fout = '{0}/{1}'.format(outdir, fout)
+        if working_dir is not None:
+            fout = '{0}/{1}'.format(working_dir, fout)
         print('Opening output file {0}.hdf5'.format(fout))
         with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
@@ -341,7 +341,7 @@ def dada_to_uvh5(reader, outdir, nbls, nchan, npol, nint, nfreq_int,
                     'val':
                     {
                         'hostname': hostname,
-                        'filename': '{0}.hdf5'.format(fout)
+                        'filename': f'{outdir}/{os.path.basename(fout)}.hdf5'
                     }
                 }
             )
