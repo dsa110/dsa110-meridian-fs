@@ -336,7 +336,7 @@ def parse_params(param_file=None):
     nint = mfs_cnf['nint']
     fringestop = mfs_cnf['fringestop']
     nfreq_int = mfs_cnf['nfreq_int']
-    ant_od = corr_cnf['antenna_order'].items()
+    ant_od = corr_cnf['antenna_order']
     antenna_order = [int(ad) for ad in list(ant_od.values())]
     dfreq = corr_cnf['bw_GHz']/nchan
     if corr_cnf['chan_ascending']:
