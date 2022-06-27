@@ -15,16 +15,18 @@ else:
     OUTDIR = None
 
 if len(sys.argv) > 2:
-    PARAM_FILE = sys.argv[2]
+    WORKING_DIR = sys.argv[2]
+else:
+    WORKING_DIR = None
+
+if len(sys.argv) > 3:
+    PARAM_FILE = sys.argv[3]
 else:
     PARAM_FILE = None
 
-if len(sys.argv) > 3:
-    HEADER_FILE = sys.argv[3]
+if len(sys.argv) > 4:
+    HEADER_FILE = sys.argv[4]
 else:
     HEADER_FILE = None
-
-if len(sys.argv) > 4:
-    WORKING_DIR = sys.argv[4]
 
 run_fringestopping(PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR, working_dir=WORKING_DIR)
