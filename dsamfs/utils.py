@@ -366,9 +366,11 @@ def parse_params(param_file=None):
     hname = socket.gethostname()
     try:
         ch0 = corr_cnf['ch0'][hname]
-    except KeyError:
+        subband = list(corr_cnf['ch0'].keys()).index(hname)
+    except (KeyError, ValueError) as exc:
         ch0 = 3400
-        LOGGER.error(f"host {hname} not in correlator")
+        subband = 0
+        LOGGER.error(f"host {hname} not in correlator.  Excepted {exc}")
     nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0 + nchan_spw]
     filelength_minutes = mfs_cnf['filelength_minutes']
@@ -382,7 +384,7 @@ def parse_params(param_file=None):
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
         nfreq_int, antenna_order, pt_dec, tsamp, fringestop, \
-        filelength_minutes, outrigger_delays, refmjd
+        filelength_minutes, outrigger_delays, refmjd, subband
 
 
 def get_pointing_declination():

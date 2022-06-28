@@ -124,7 +124,7 @@ def test_parse_params():
         params = du.parse_params()
         param_types = (
             bool, str, int, int, int, np.ndarray, int, int, int, int, list, float, float, bool,
-            int, dict, float)
+            int, dict, float, int)
         for i, param in enumerate(params):
             assert isinstance(param, param_types[i])
 

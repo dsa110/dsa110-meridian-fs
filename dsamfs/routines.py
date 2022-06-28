@@ -15,7 +15,7 @@ import dsamfs.utils as pu
 from dsamfs.io import dada_to_uvh5
 
 
-def run_fringestopping(param_file=None, header_file=None, output_dir=None):
+def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
     ----------
@@ -33,21 +33,17 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     # Read in parameter file
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
         samples_per_frame_out, nint, nfreq_int, antenna_order, pt_dec, \
-        tsamp, fringestop, filelength_minutes, outrigger_delays, refmjd = \
+        tsamp, fringestop, filelength_minutes, outrigger_delays, refmjd, subband = \
         pu.parse_params(param_file)
     nbls = (nant * (nant + 1)) // 2
     key = int(f"0x{key_string}", 16)
-
-    hostname = socket.gethostname()
-    conf = cnf.Conf()
-    subband = list(conf.get("corr")['ch0'].keys()).index(hostname)
-    snapdelays = pu.get_delays(antenna_order, nants=117)
 
     df = utils.get_itrf(
     latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON * u.rad, ct.OVRO_ALT * u.m)
     )
     ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
     nants_telescope = max(df.index)
+    snapdelays = pu.get_delays(antenna_order, nants_telescope)
 
     # Update outrigger delays and refmjd in etcd
     pu.put_outrigger_delays(outrigger_delays)

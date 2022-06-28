@@ -49,12 +49,7 @@ def initialize_uvh5_file(
     fs_table : str
         The full path to the table used in fringestopping.  Defaults None.
     """
-    # also need the itrf coordinates of the antennas
-
-    # have to have some way of calculating the ant_1_array and
-    # ant_2_array order and uvw array.  The uvw array should be constant but
-    # still has to have dimensions (nblts, 3)
-
+    print(f"snapdelays: {snapdelays}")
     # Header parameters
     header = fhdf.create_group("Header")
     data = fhdf.create_group("Data")
@@ -246,7 +241,7 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
 def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
                  fs_table, tsamp, bname, uvw, fobs,
-                 vis_model, test, nmins, subband, snapdelays):
+                 vis_model, test, nmins, subband, snapdelays, ant_itrf, nants_telescope):
     """
     Reads dada buffer and writes to uvh5 file.
     """
@@ -276,7 +271,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
         print('Opening output file {0}.hdf5'.format(fout))
         with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
-                                 fobs, fs_table, snapdelays)
+                                 fobs, snapdelays, ant_itrf, nants_telescope, fs_table)
 
             idx_frame_file = 0  # number of fsed frames write to curent file
             while (idx_frame_file < max_frames_per_file) and (not nans):
