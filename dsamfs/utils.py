@@ -33,7 +33,7 @@ LOGGER.subsystem("software")
 LOGGER.app("dsamfs")
 
 
-def get_delays(antenna_order: np.ndarray, nants: int):
+def get_delays(antenna_order: np.ndarray, nants: int, etcd: dsa_store.DsaStore = None):
     """Gets the delays currently set in the sanps.
 
     Parameters
@@ -48,7 +48,9 @@ def get_delays(antenna_order: np.ndarray, nants: int):
     ndarray
         The delays for each antenna/pol in the array.
     """
-    etcd = dsa_store.DsaStore()
+    if etcd is None:
+        etcd = dsa_store.DsaStore()
+
     antenna_order = np.array(antenna_order)
     delays = np.zeros((nants, 2), dtype=np.int)
     nant_snap = 3
@@ -77,12 +79,13 @@ def get_delays(antenna_order: np.ndarray, nants: int):
     return delays
 
 
-def get_time():
+def get_time(etcd: dsa_store.DsaStore = None):
     """
     Gets the start time of the first spectrum from etcd.
     """
-    try:
+    if etcd is None:
         etcd = dsa_store.DsaStore()
+    try:
         ret_time = (etcd.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
                     + float(etcd.get_dict('/mon/snap/1/utc_start')['utc_start'])
                     * 4. * 8.192e-6 / 86400.)

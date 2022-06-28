@@ -9,6 +9,8 @@ import astropy.units as u
 from psrdada import Reader
 import dsautils.dsa_syslog as dsl
 from dsautils import cnf
+from antpos import utils
+import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.io import dada_to_uvh5
 
@@ -39,6 +41,13 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     hostname = socket.gethostname()
     conf = cnf.Conf()
     subband = list(conf.get("corr")['ch0'].keys()).index(hostname)
+    snapdelays = pu.get_delays(antenna_order, nants=117)
+
+    df = utils.get_itrf(
+    latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON * u.rad, ct.OVRO_ALT * u.m)
+    )
+    ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
+    nants_telescope = max(df.index)
 
     # Update outrigger delays and refmjd in etcd
     pu.put_outrigger_delays(outrigger_delays)
@@ -96,7 +105,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
         reader, output_dir, working_dir, nbls, nchan, npol, nint, nfreq_int,
         samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
         fs_table, tsamp, bname, uvw, fobs,
-        vis_model, test, filelength_minutes, subband
+        vis_model, test, filelength_minutes, subband, snapdelays,
+        ant_itrf, nants_telescope
     )
 
     if test:
