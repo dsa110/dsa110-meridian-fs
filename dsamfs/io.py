@@ -329,7 +329,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                             nfreq_int, npol), axis=3)
 
                 update_uvh5_file(
-                    fhdf5, data, t, tsamp, bname, uvw,
+                    fhdf5, data, t, tsamp*nint, bname, uvw,
                     nsamples
                 )
 
