@@ -270,7 +270,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
         if working_dir is not None:
             fout = '{0}/{1}'.format(working_dir, fout)
         print('Opening output file {0}.hdf5'.format(fout))
-        with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
+        with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w', driver='stdio') as fhdf5:
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, snapdelays, ant_itrf, nants_telescope, fs_table)
 
