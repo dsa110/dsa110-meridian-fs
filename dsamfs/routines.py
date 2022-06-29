@@ -39,7 +39,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
     key = int(f"0x{key_string}", 16)
 
     df = utils.get_itrf(
-    latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON * u.rad, ct.OVRO_ALT * u.m)
+        latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON *
+                       u.rad, ct.OVRO_ALT * u.m)
     )
     ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
     nants_telescope = max(df.index)
@@ -54,7 +55,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
         f"fringestopping_table_dec{(pt_dec*u.rad).to_value(u.deg):.1f}deg_"
         f"{len(antenna_order)}ant.npz")
     fs_table = f"{working_dir}/{fs_table}"
-    bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, refmjd, casa_order=False)
+    bname, blen, uvw = pu.baseline_uvw(
+        antenna_order, pt_dec, refmjd, casa_order=False)
     vis_model = pu.load_visibility_model(
         fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order, outrigger_delays, bname, refmjd)
     if not fringestop:
@@ -71,7 +73,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
         buffer_size = int(4 * nbls * npol * nchan * samples_per_frame * 2)
         data_rate = buffer_size * (sample_rate / samples_per_frame) / 1e6
         with subprocess.Popen(
-                ["dada_db", "-a", str(header_size), "-b", str(buffer_size), "-k", key_string],
+                ["dada_db", "-a", str(header_size), "-b",
+                 str(buffer_size), "-k", key_string],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
         ) as p_create:
@@ -89,7 +92,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
 
     if test:
         p_write = subprocess.Popen(
-            ["dada_junkdb", "-r", str(data_rate), "-t", "60", "-k", key_string, header_file],
+            ["dada_junkdb", "-r", str(data_rate), "-t",
+             "60", "-k", key_string, header_file],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 

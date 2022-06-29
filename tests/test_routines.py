@@ -34,7 +34,8 @@ def test_end2end(tmpdir):
         header_path = f"{data_path}/test_header.txt"
 
         # Run fringestopping as a test
-        run_fringestopping(param_file=param_path, header_file=header_path, output_dir=tmpdir, working_dir=tmpdir)
+        run_fringestopping(
+            param_file=param_path, header_file=header_path, output_dir=tmpdir, working_dir=tmpdir)
 
         # Check that the hdf5 file metadata is correct
         fname = glob.glob(f"{tmpdir}/*.hdf5")[0]

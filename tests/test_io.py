@@ -18,16 +18,19 @@ def test_initialize_uvh5_file(tmpdir: str):
     pt_dec = get_config('pt_dec')
     antenna_order = get_config('antenna_order')
     nant = len(antenna_order)
-    fobs = get_config('f0_GHz') + np.arange(nfreq) * get_config('deltaf_MHz') / 1e3
+    fobs = (
+        get_config('f0_GHz') + np.arange(nfreq) * get_config('deltaf_MHz') / 1e3)
     fs_table = 'fs_table.npz'
     df = utils.get_itrf(
-            latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON * u.rad, ct.OVRO_ALT * u.m))
+        latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON * u.rad, ct.OVRO_ALT * u.m))
     ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
     nant_telescope = max(df.index)
     snapdelays = pu.get_delays(antenna_order, nant_telescope)
-    
+
     with h5py.File(f"{tmpdir}/test.hdf5", "w") as fhdf5:
-        mfsio.initialize_uvh5_file(fhdf5, nfreq, npol, pt_dec, antenna_order, fobs, snapdelays, ant_itrf, nant_telescope, fs_table)
+        mfsio.initialize_uvh5_file(
+            fhdf5, nfreq, npol, pt_dec, antenna_order, fobs, snapdelays, ant_itrf, nant_telescope,
+            fs_table)
 
     with h5py.File(f"{tmpdir}/test.hdf5", "r") as fhdf5:
         assert "Header" in fhdf5
@@ -66,7 +69,8 @@ def test_update_uvh5_file(tmpdir: str):
     data = np.ones((nt, nbl, nchan, npol), dtype=np.complex64)
 
     with h5py.File(f"{tmpdir}/test.hdf5", "r+") as fhdf5:
-        mfsio.update_uvh5_file(fhdf5, data, obstime, tsamp, bname, uvw, nsamples)
+        mfsio.update_uvh5_file(
+            fhdf5, data, obstime, tsamp, bname, uvw, nsamples)
 
     with h5py.File(f"{tmpdir}/test.hdf5", "r") as fhdf5:
         assert fhdf5["Data"]["visdata"].shape == (nt * nbl, 1, nchan, npol)

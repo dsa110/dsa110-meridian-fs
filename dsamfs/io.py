@@ -25,6 +25,7 @@ try:
 except:
     pass
 
+
 def initialize_uvh5_file(
         fhdf, nfreq, npol, pt_dec, antenna_order, fobs, snapdelays, ant_itrf, nants_telescope, fs_table=None):
     """Initializes an HDF5 file according to the UVH5 specification.
@@ -296,7 +297,8 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                         tstart = 59000.5
                     else:
                         tstart = pu.get_time(etcd)
-                    tstart += (nint * tsamp / 2) / ct.SECONDS_PER_DAY + 2400000.5
+                    tstart += (
+                        (nint * tsamp / 2) / ct.SECONDS_PER_DAY + 2400000.5)
 
                 data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
                 t, tstart = pu.update_time(tstart, samples_per_frame_out,
@@ -340,7 +342,8 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 }
             )
         except:
-            logger.error(f"Could not reach ETCD to transfer {fout} from {hostname}")
+            logger.error(
+                f"Could not reach ETCD to transfer {fout} from {hostname}")
     try:
         reader.disconnect()
     except PSRDadaError:
