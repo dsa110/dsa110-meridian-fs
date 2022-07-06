@@ -156,8 +156,8 @@ def generate_fringestopping_table(
         bw[:, i] += ant_bw[antenna_order.index(int(ant2)), :] - \
             ant_bw[antenna_order.index(int(ant1)), :]
         # Add in outrigger delays
-        bw[:, i] += (outrigger_delays.get(int(ant1), 0) -
-                     outrigger_delays.get(int(ant2), 0)) * 0.29979245800000004
+        bw[:, i] += (outrigger_delays.get(str(ant1), 0) -
+                     outrigger_delays.get(str(ant2), 0)) * 0.29979245800000004
 
     # Save the fringestopping table
     if os.path.exists(outname):
