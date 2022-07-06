@@ -2,7 +2,7 @@ import yaml
 import numpy as np
 
 _config = None
-config_file = "./test_config.yaml"
+config_file = "./tests/test_config.yaml"
 
 
 def get_config(key):
