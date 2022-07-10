@@ -274,9 +274,12 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     data_reset = np.ones(
         (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64) * np.nan
-    nsamples = np.ones((samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol)) * nint
+    nsamples = np.ones((samples_per_frame_out, nbls, nchan * nfreq_int, npol)) * nint
+    nsamples = np.mean(nsamples.reshape(
+        nsamples.shape[0], nsamples.shape[1], nchan,
+        nfreq_int, npol), axis=3)
     data = np.ones(
-        (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
+        (samples_per_frame_out, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64)
     
     while not nans:
@@ -349,9 +352,6 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                         data = np.mean(data.reshape(
                             data.shape[0], data.shape[1], nchan, nfreq_int,
                             npol), axis=3)
-                        nsamples = np.mean(nsamples.reshape(
-                            nsamples.shape[0], nsamples.shape[1], nchan,
-                            nfreq_int, npol), axis=3)
                     else:
                         data = np.nanmean(data.reshape(
                             data.shape[0], data.shape[1], nchan,
