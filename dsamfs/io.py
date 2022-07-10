@@ -267,14 +267,17 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     max_frames_per_file = int(np.ceil(nmins * 60 * sample_rate_out))
     hostname = socket.gethostname()
 
-    # allocate two arrays for data, to enable memory reuse
+    # allocate all big arrays to enable memory reuse
     data_in = np.ones(
-        (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
+        (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64) * np.nan
     data_reset = np.ones(
-        (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
+        (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64) * np.nan
-
+    nsamples = np.ones((samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol)) * nint
+    data = np.ones(
+        (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
+        dtype=np.complex64)
     
     while not nans:
         now = datetime.utcnow()
@@ -301,18 +304,19 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 logfl.write(f'{nownow}: made data')
                 for i in range(data_in.shape[0]):
-                    try:
-                        assert reader.isConnected
-                        data_in[i, ...] = pu.read_buffer(
-                            reader, nbls, nchan * nfreq_int, npol)
+                    for j in range(data_in.shape[1]):
+                        try:
+                            assert reader.isConnected
+                            data_in[i,j, ...] = pu.read_buffer(
+                                reader, nbls, nchan * nfreq_int, npol)
 
-                    except (AssertionError, ValueError, PSRDadaError) as e:
-                        print(f"Last integration has {i} timesamples")
-                        logger.info(
-                            f"Disconnected from buffer with message {type(e).__name__}:\n"
-                            f"{''.join(traceback.format_tb(e.__traceback__))}")
-                        nans = True
-                        break
+                        except (AssertionError, ValueError, PSRDadaError) as e:
+                            print(f"Last integration has {i*nint+j} timesamples")
+                            logger.info(
+                                f"Disconnected from buffer with message {type(e).__name__}:\n"
+                                f"{''.join(traceback.format_tb(e.__traceback__))}")
+                            nans = True
+                            break
 
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 logfl.write(f'{nownow}: read from buffer\n')
@@ -325,7 +329,16 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                     tstart += (
                         (nint * tsamp / 2) / ct.SECONDS_PER_DAY + 2400000.5)
 
-                data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
+                
+                
+                #data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
+                data_in /= vis_model
+                if nans:
+                    nsamples = np.count_nonzero(~np.isnan(data), axis=1)
+                    data = np.nanmean(data_in, axis=1)                    
+                else:
+                    data = np.mean(data_in, axis=1)                    
+
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 logfl.write(f'{nownow}: fringestopped\n')
 
