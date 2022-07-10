@@ -13,7 +13,7 @@ import casatools as cc
 import astropy.units as u
 from dsacalib import constants as ct
 from dsacalib.fringestopping import calc_uvw
-
+import numba
 
 def calc_uvw_blt(blen, tobs, src_epoch, src_lon, src_lat, obs='OVRO_MMA'):
     """Calculates uvw coordinates.
@@ -191,6 +191,7 @@ def zenith_visibility_model(fobs, fstable='fringestopping_table.npz'):
     return vis_model
 
 
+@numba.jit(fastmath=True)
 def fringestop_on_zenith(vis, vis_model, nans=False):
     """Performs meridian fringestopping.
 
