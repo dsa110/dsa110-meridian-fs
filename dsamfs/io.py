@@ -247,6 +247,9 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     Reads dada buffer and writes to uvh5 file.
     """
 
+    # file logging
+    logfl = open("/home/ubuntu/data/mfslog.txt","w")
+    
     etcd = ds.DsaStore()
 
     logger = dsl.DsaSyslogger()
@@ -269,8 +272,11 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
         fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
         if working_dir is not None:
             fout = '{0}/{1}'.format(working_dir, fout)
-        print('Opening output file {0}.hdf5'.format(fout))
+        logfl.write('Opening output file {0}.hdf5'.format(fout))
         with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
+
+            nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+            logfl.write(f'{nownow}: Initializing file')
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, snapdelays, ant_itrf, nants_telescope, fs_table)
 
@@ -279,11 +285,17 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 data_in = np.ones(
                     (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
                     dtype=np.complex64) * np.nan
+
+                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                logfl.write(f'{nownow}: made data')
                 for i in range(data_in.shape[0]):
                     try:
                         assert reader.isConnected
                         data_in[i, ...] = pu.read_buffer(
                             reader, nbls, nchan * nfreq_int, npol)
+                        nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                        logfl.write(f'{nownow}: read from buffer')
+
                     except (AssertionError, ValueError, PSRDadaError) as e:
                         print(f"Last integration has {i} timesamples")
                         logger.info(
@@ -301,6 +313,9 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                         (nint * tsamp / 2) / ct.SECONDS_PER_DAY + 2400000.5)
 
                 data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
+                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                logfl.write(f'{nownow}: fringestopped')
+
                 t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                            sample_rate_out)
                 if nfreq_int > 1:
@@ -320,10 +335,17 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                             nsamples.shape[0], nsamples.shape[1], nchan,
                             nfreq_int, npol), axis=3)
 
+                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                logfl.write(f'{nownow}: reshaped')
+
                 update_uvh5_file(
                     fhdf5, data, t, tsamp*nint, bname, uvw,
                     nsamples
                 )
+
+                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                logfl.write(f'{nownow}: updated uvh5')
+
 
                 idx_frame_out += 1
                 idx_frame_file += 1
