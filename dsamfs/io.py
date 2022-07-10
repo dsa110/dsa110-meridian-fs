@@ -282,6 +282,11 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
             idx_frame_file = 0  # number of fsed frames write to curent file
             while (idx_frame_file < max_frames_per_file) and (not nans):
+                
+                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                logfl.write(f'{nownow}: start of loop\n')
+
+                
                 data_in = np.ones(
                     (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
                     dtype=np.complex64) * np.nan
@@ -293,8 +298,6 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                         assert reader.isConnected
                         data_in[i, ...] = pu.read_buffer(
                             reader, nbls, nchan * nfreq_int, npol)
-                        nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                        logfl.write(f'{nownow}: read from buffer')
 
                     except (AssertionError, ValueError, PSRDadaError) as e:
                         print(f"Last integration has {i} timesamples")
@@ -303,6 +306,9 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                             f"{''.join(traceback.format_tb(e.__traceback__))}")
                         nans = True
                         break
+
+                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                logfl.write(f'{nownow}: read from buffer\n')
 
                 if idx_frame_out == 0:
                     if test:
@@ -314,7 +320,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
                 data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: fringestopped')
+                logfl.write(f'{nownow}: fringestopped\n')
 
                 t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                            sample_rate_out)
@@ -336,7 +342,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                             nfreq_int, npol), axis=3)
 
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: reshaped')
+                logfl.write(f'{nownow}: reshaped\n')
 
                 update_uvh5_file(
                     fhdf5, data, t, tsamp*nint, bname, uvw,
@@ -344,12 +350,13 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 )
 
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: updated uvh5')
+                logfl.write(f'{nownow}: updated uvh5\n')
 
 
                 idx_frame_out += 1
                 idx_frame_file += 1
-                print(f"Integration {idx_frame_out} done")
+                #print(f"Integration {idx_frame_out} done")
+
         os.rename(f"{fout}_incomplete.hdf5", f"{fout}.hdf5")
         try:
             etcd.put_dict(
