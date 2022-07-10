@@ -267,6 +267,15 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     max_frames_per_file = int(np.ceil(nmins * 60 * sample_rate_out))
     hostname = socket.gethostname()
 
+    # allocate two arrays for data, to enable memory reuse
+    data_in = np.ones(
+        (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
+        dtype=np.complex64) * np.nan
+    data_reset = np.ones(
+        (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
+        dtype=np.complex64) * np.nan
+
+    
     while not nans:
         now = datetime.utcnow()
         fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
@@ -286,11 +295,9 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 logfl.write(f'{nownow}: start of loop\n')
 
+                # copy data_reset to data_in
+                np.copyto(data_in, data_reset)
                 
-                data_in = np.ones(
-                    (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
-                    dtype=np.complex64) * np.nan
-
                 nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 logfl.write(f'{nownow}: made data')
                 for i in range(data_in.shape[0]):
