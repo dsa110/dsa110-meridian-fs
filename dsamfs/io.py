@@ -248,7 +248,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     """
 
     # file logging
-    logfl = open("/home/ubuntu/data/mfslog.txt","w")
+    #logfl = open("/home/ubuntu/data/mfslog.txt","w")
     
     etcd = ds.DsaStore()
 
@@ -287,25 +287,25 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
         fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
         if working_dir is not None:
             fout = '{0}/{1}'.format(working_dir, fout)
-        logfl.write('Opening output file {0}.hdf5'.format(fout))
+        #logfl.write('Opening output file {0}.hdf5'.format(fout))
         with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
 
-            nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-            logfl.write(f'{nownow}: Initializing file')
+            #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+            #logfl.write(f'{nownow}: Initializing file')
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, snapdelays, ant_itrf, nants_telescope, fs_table)
 
             idx_frame_file = 0  # number of fsed frames write to curent file
             while (idx_frame_file < max_frames_per_file) and (not nans):
                 
-                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: start of loop\n')
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: start of loop\n')
 
                 # copy data_reset to data_in
                 np.copyto(data_in, data_reset)
                 
-                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: made data')
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: made data')
                 for i in range(data_in.shape[0]):
                     for j in range(data_in.shape[1]):
                         try:
@@ -321,8 +321,8 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                             nans = True
                             break
 
-                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: read from buffer\n')
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: read from buffer\n')
 
                 if idx_frame_out == 0:
                     if test:
@@ -342,8 +342,8 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 else:
                     data = np.mean(data_in, axis=1)                    
 
-                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: fringestopped\n')
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: fringestopped\n')
 
                 t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                            sample_rate_out)
@@ -361,16 +361,16 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                             nsamples.shape[0], nsamples.shape[1], nchan,
                             nfreq_int, npol), axis=3)
 
-                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: reshaped\n')
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: reshaped\n')
 
                 update_uvh5_file(
                     fhdf5, data, t, tsamp*nint, bname, uvw,
                     nsamples
                 )
 
-                nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                logfl.write(f'{nownow}: updated uvh5\n')
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: updated uvh5\n')
 
 
                 idx_frame_out += 1
