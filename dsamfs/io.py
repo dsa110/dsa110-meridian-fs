@@ -249,7 +249,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
     # file logging
     #logfl = open("/home/ubuntu/data/mfslog.txt","w")
-    
+
     etcd = ds.DsaStore()
 
     logger = dsl.DsaSyslogger()
@@ -274,14 +274,15 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     data_reset = np.ones(
         (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64) * np.nan
-    nsamples = np.ones((samples_per_frame_out, nbls, nchan * nfreq_int, npol)) * nint
+    nsamples = np.ones((samples_per_frame_out, nbls,
+                       nchan * nfreq_int, npol)) * nint
     nsamples = np.mean(nsamples.reshape(
         nsamples.shape[0], nsamples.shape[1], nchan,
         nfreq_int, npol), axis=3)
     data = np.ones(
         (samples_per_frame_out, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64)
-    
+
     while not nans:
         now = datetime.utcnow()
         fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
@@ -297,24 +298,25 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
             idx_frame_file = 0  # number of fsed frames write to curent file
             while (idx_frame_file < max_frames_per_file) and (not nans):
-                
+
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: start of loop\n')
 
                 # copy data_reset to data_in
                 np.copyto(data_in, data_reset)
-                
+
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: made data')
                 for i in range(data_in.shape[0]):
                     for j in range(data_in.shape[1]):
                         try:
                             assert reader.isConnected
-                            data_in[i,j, ...] = pu.read_buffer(
+                            data_in[i, j, ...] = pu.read_buffer(
                                 reader, nbls, nchan * nfreq_int, npol)
 
                         except (AssertionError, ValueError, PSRDadaError) as e:
-                            print(f"Last integration has {i*nint+j} timesamples")
+                            print(
+                                f"Last integration has {i*nint+j} timesamples")
                             logger.info(
                                 f"Disconnected from buffer with message {type(e).__name__}:\n"
                                 f"{''.join(traceback.format_tb(e.__traceback__))}")
@@ -332,15 +334,13 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                     tstart += (
                         (nint * tsamp / 2) / ct.SECONDS_PER_DAY + 2400000.5)
 
-                
-                
                 #data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
                 data_in /= vis_model
                 if nans:
                     nsamples = np.count_nonzero(~np.isnan(data), axis=1)
-                    data = np.nanmean(data_in, axis=1)                    
+                    data = np.nanmean(data_in, axis=1)
                 else:
-                    data = np.mean(data_in, axis=1)                    
+                    data = np.mean(data_in, axis=1)
 
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: fringestopped\n')
@@ -365,13 +365,10 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 #logfl.write(f'{nownow}: reshaped\n')
 
                 update_uvh5_file(
-                    fhdf5, data, t, tsamp*nint, bname, uvw,
-                    nsamples
-                )
+                    fhdf5, data, t, tsamp*nint, bname, uvw, nsamples)
 
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: updated uvh5\n')
-
 
                 idx_frame_out += 1
                 idx_frame_file += 1
