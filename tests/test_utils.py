@@ -10,6 +10,9 @@ from utils import get_config
 
 
 def test_get_delays():
+    if socket.gethostname() != get_config('localhost'):
+        return
+
     nant = get_config('nant')
     antenna_order = range(1, nant + 1)
 
@@ -20,6 +23,9 @@ def test_get_delays():
 
 
 def test_get_time():
+    if socket.gethostname() != get_config('localhost'):
+        return
+
     time = du.get_time()
     assert time > 55499.0
 
