@@ -9,12 +9,15 @@ import astropy.units as u
 from psrdada import Reader
 import dsautils.dsa_syslog as dsl
 from dsautils import cnf
+from antpos import utils
+import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.io import dada_to_uvh5
 
 
-def run_fringestopping(param_file=None, header_file=None, output_dir=None):
+def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir=None):
     """Read in data, fringestop on zenith, and write to hdf5 file.
+
     Parameters
     ----------
     param_file : str
@@ -23,6 +26,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     """
     if working_dir is None:
         working_dir = "/home/ubuntu/data/"
+    if output_dir is None:
+        output_dir = working_dir
 
     logger = dsl.DsaSyslogger()
     logger.subsystem("software")
@@ -31,14 +36,18 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
     # Read in parameter file
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
         samples_per_frame_out, nint, nfreq_int, antenna_order, pt_dec, \
-        tsamp, fringestop, filelength_minutes, outrigger_delays, refmjd = \
+        tsamp, fringestop, filelength_minutes, outrigger_delays, refmjd, subband = \
         pu.parse_params(param_file)
     nbls = (nant * (nant + 1)) // 2
     key = int(f"0x{key_string}", 16)
 
-    hostname = socket.gethostname()
-    conf = cnf.Conf()
-    subband = list(conf.get("corr")['ch0'].keys()).index(hostname)
+    df = utils.get_itrf(
+        latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON *
+                       u.rad, ct.OVRO_ALT * u.m)
+    )
+    ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
+    nants_telescope = max(df.index)
+    snapdelays = pu.get_delays(antenna_order, nants_telescope)
 
     # Update outrigger delays and refmjd in etcd
     pu.put_outrigger_delays(outrigger_delays)
@@ -49,7 +58,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
         f"fringestopping_table_dec{(pt_dec*u.rad).to_value(u.deg):.1f}deg_"
         f"{len(antenna_order)}ant.npz")
     fs_table = f"{working_dir}/{fs_table}"
-    bname, blen, uvw = pu.baseline_uvw(antenna_order, pt_dec, refmjd, casa_order=False)
+    bname, blen, uvw = pu.baseline_uvw(
+        antenna_order, pt_dec, refmjd, casa_order=False)
     vis_model = pu.load_visibility_model(
         fs_table, blen, nint, fobs, pt_dec, tsamp, antenna_order, outrigger_delays, bname, refmjd)
     if not fringestop:
@@ -66,7 +76,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
         buffer_size = int(4 * nbls * npol * nchan * samples_per_frame * 2)
         data_rate = buffer_size * (sample_rate / samples_per_frame) / 1e6
         with subprocess.Popen(
-                ["dada_db", "-a", str(header_size), "-b", str(buffer_size), "-k", key_string],
+                ["dada_db", "-a", str(header_size), "-b",
+                 str(buffer_size), "-k", key_string],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
         ) as p_create:
@@ -84,7 +95,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
 
     if test:
         p_write = subprocess.Popen(
-            ["dada_junkdb", "-r", str(data_rate), "-t", "60", "-k", key_string, header_file],
+            ["dada_junkdb", "-r", str(data_rate), "-t",
+             "60", "-k", key_string, header_file],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
@@ -96,7 +108,8 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None):
         reader, output_dir, working_dir, nbls, nchan, npol, nint, nfreq_int,
         samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
         fs_table, tsamp, bname, uvw, fobs,
-        vis_model, test, filelength_minutes, subband
+        vis_model, test, filelength_minutes, subband, snapdelays,
+        ant_itrf, nants_telescope
     )
 
     if test:

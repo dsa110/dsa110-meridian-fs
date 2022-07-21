@@ -33,7 +33,7 @@ LOGGER.subsystem("software")
 LOGGER.app("dsamfs")
 
 
-def get_delays(antenna_order: np.ndarray, nants: int):
+def get_delays(antenna_order: np.ndarray, nants: int, etcd: dsa_store.DsaStore = None):
     """Gets the delays currently set in the sanps.
 
     Parameters
@@ -48,7 +48,9 @@ def get_delays(antenna_order: np.ndarray, nants: int):
     ndarray
         The delays for each antenna/pol in the array.
     """
-    etcd = dsa_store.DsaStore()
+    if etcd is None:
+        etcd = dsa_store.DsaStore()
+
     antenna_order = np.array(antenna_order)
     delays = np.zeros((nants, 2), dtype=np.int)
     nant_snap = 3
@@ -77,15 +79,17 @@ def get_delays(antenna_order: np.ndarray, nants: int):
     return delays
 
 
-def get_time():
+def get_time(etcd: dsa_store.DsaStore = None):
     """
     Gets the start time of the first spectrum from etcd.
     """
-    try:
+    if etcd is None:
         etcd = dsa_store.DsaStore()
-        ret_time = (etcd.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
-                    + float(etcd.get_dict('/mon/snap/1/utc_start')['utc_start'])
-                    * 4. * 8.192e-6 / 86400.)
+    try:
+        ret_time = (
+            etcd.get_dict('/mon/snap/1/armed_mjd')['armed_mjd']
+            + float(etcd.get_dict('/mon/snap/1/utc_start')['utc_start'])
+            * 4. * 8.192e-6 / 86400.)
     except:
         ret_time = 55000.0
 
@@ -171,7 +175,8 @@ def update_time(tstart, samples_per_frame, sample_rate):
     tstart : float
           The start time of the next dataframe in seconds.
     """
-    t = tstart + np.arange(samples_per_frame) / sample_rate / ct.SECONDS_PER_DAY
+    t = (
+        tstart + np.arange(samples_per_frame) / sample_rate / ct.SECONDS_PER_DAY)
     tstart += samples_per_frame / sample_rate / ct.SECONDS_PER_DAY
     return t, tstart
 
@@ -211,7 +216,7 @@ def load_visibility_model(
     If the path to the file does not exist or if the model is for a different
     number of integrations or baselines a new model will be created and saved
     to the file path. 
-    
+
     TODO: Order  may not be correct! Need to verify the
     antenna order that the correlator uses.
 
@@ -283,7 +288,8 @@ def load_antenna_delays(ant_delay_table, nant, npol=2):
     for i in np.arange(nant):
         for j in np.arange(i + 1):
             # j-i or i-j ?
-            bl_delays[idx, :] = antenna_delays[:, 0, j] - antenna_delays[:, 0, i]
+            bl_delays[idx, :] = antenna_delays[:, 0, j] - \
+                antenna_delays[:, 0, i]
 
     return bl_delays
 
@@ -314,10 +320,12 @@ def baseline_uvw(antenna_order, pt_dec, refmjd, autocorrs=True, casa_order=False
         The uvw coordinates of the baselines for a phase reference at meridian.
         Dimensions (nbaselines, 3).
     """
-    df_bls = get_baselines(antenna_order, autocorrs=autocorrs, casa_order=casa_order)
+    df_bls = get_baselines(
+        antenna_order, autocorrs=autocorrs, casa_order=casa_order)
     bname = df_bls['bname']
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
-    bu, bv, bw = calc_uvw(blen, refmjd, 'HADEC', 0. * u.deg, (pt_dec * u.rad).to(u.deg))
+    bu, bv, bw = calc_uvw(
+        blen, refmjd, 'HADEC', 0. * u.deg, (pt_dec * u.rad).to(u.deg))
     uvw = np.array([bu, bv, bw]).T
     return bname, blen, uvw
 
@@ -363,9 +371,11 @@ def parse_params(param_file=None):
     hname = socket.gethostname()
     try:
         ch0 = corr_cnf['ch0'][hname]
-    except KeyError:
+        subband = list(corr_cnf['ch0'].keys()).index(hname)
+    except (KeyError, ValueError) as exc:
         ch0 = 3400
-        LOGGER.error(f"host {hname} not in correlator")
+        subband = 0
+        LOGGER.error(f"host {hname} not in correlator.  Excepted {exc}")
     nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0 + nchan_spw]
     filelength_minutes = mfs_cnf['filelength_minutes']
@@ -379,7 +389,7 @@ def parse_params(param_file=None):
     return test, key_string, nant, nchan_spw, npol, fobs, \
         samples_per_frame, samples_per_frame_out, nint, \
         nfreq_int, antenna_order, pt_dec, tsamp, fringestop, \
-        filelength_minutes, outrigger_delays, refmjd
+        filelength_minutes, outrigger_delays, refmjd, subband
 
 
 def get_pointing_declination():
@@ -394,7 +404,8 @@ def put_outrigger_delays(outrigger_delays):
     current_mjd = Time(datetime.utcnow()).mjd
 
     for ant in range(1, 118):
-        payload = {'time': current_mjd, 'ant_num': ant, 'delay': outrigger_delays.get(str(ant), 0)}
+        payload = {
+            'time': current_mjd, 'ant_num': ant, 'delay': outrigger_delays.get(str(ant), 0)}
         etcd.put_dict(f"/mon/fringe/{ant}", payload)
 
 

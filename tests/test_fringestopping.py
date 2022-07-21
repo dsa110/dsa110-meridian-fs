@@ -17,7 +17,8 @@ def test_calc_uvw_blt():
     nt = get_config('nt')
     nbl = (nant * (nant + 1)) // 2
     tobs = get_config('refmjd') + np.arange(nt) / ct.SECONDS_PER_DAY
-    df_bls = utils.get_baselines(antenna_order, autocorrs=True, casa_order=False)
+    df_bls = utils.get_baselines(
+        antenna_order, autocorrs=True, casa_order=False)
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
     ra = 14.31225787 * u.hourangle
     dec = get_config('pt_dec') * u.rad
@@ -39,7 +40,8 @@ def test_calc_uvw_blt():
                                           'HADEC',
                                           np.zeros(nt * nbl) * u.rad,
                                           np.ones(nt * nbl) * dec)
-    uu, vv, ww = calc_uvw(blen, tobs, 'HADEC', np.zeros(nt) * u.rad, np.ones(nt) * dec)
+    uu, vv, ww = calc_uvw(
+        blen, tobs, 'HADEC', np.zeros(nt) * u.rad, np.ones(nt) * dec)
     assert np.all(np.abs(uvw_blt[:, 0] - uu.T.flatten()) < 1e-6)
     assert np.all(np.abs(uvw_blt[:, 1] - vv.T.flatten()) < 1e-6)
     assert np.all(np.abs(uvw_blt[:, 2] - ww.T.flatten()) < 1e-6)
@@ -59,7 +61,8 @@ def test_generate_fringestopping_table(tmpdir: str):
         for ant2 in antenna_order[i:]:
             bname += [f"{ant1}-{ant2}"]
 
-    df_bls = utils.get_baselines(antenna_order, autocorrs=True, casa_order=False)
+    df_bls = utils.get_baselines(
+        antenna_order, autocorrs=True, casa_order=False)
     blen = np.array([df_bls['x_m'], df_bls['y_m'], df_bls['z_m']]).T
 
     fringestopping.generate_fringestopping_table(
@@ -91,7 +94,8 @@ def test_zenith_visibility_mode(tmpdir: str):
     if not os.path.exists(f"{tmpdir}/fs_table.npz"):
         test_generate_fringestopping_table(tmpdir)
 
-    vismodel = fringestopping.zenith_visibility_model(fobs, f"{tmpdir}/fs_table.npz")
+    vismodel = fringestopping.zenith_visibility_model(
+        fobs, f"{tmpdir}/fs_table.npz")
     assert vismodel.shape == (1, nint, nbl, nchan, 1)
     assert isinstance(vismodel.ravel()[0], complex)
 
@@ -114,7 +118,8 @@ def test_fringestop_on_zenith():
     vis = np.ones((nt, nbl, nchan, npol), np.complex64)
     vis_model = np.tile(0.5 + 0.j, (1, nint, nbl, nchan, 1))
     vis[-1, ...] = np.nan
-    vis2, nsamples = fringestopping.fringestop_on_zenith(vis, vis_model, nans=True)
+    vis2, nsamples = fringestopping.fringestop_on_zenith(
+        vis, vis_model, nans=True)
     assert vis2.shape[1:] == vis.shape[1:]
     assert vis2.shape[0] == vis.shape[0] // nint
     assert np.allclose(vis2, 2)

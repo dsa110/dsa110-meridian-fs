@@ -12,7 +12,7 @@ antenna_order:
   - 3
   - 66
 outrigger_delays:
-  24: 1200
+  "24": 1200
 f0_GHz: 1.405
 deltaf_MHz: 0.0305175781
 refmjd: 55000.
