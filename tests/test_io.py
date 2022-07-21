@@ -13,6 +13,9 @@ from utils import get_config
 
 
 def test_initialize_uvh5_file(tmpdir: str):
+    if socket.gethostname() != get_config('localhost'):
+        return
+
     nfreq = get_config('nchan')
     npol = get_config('npol')
     pt_dec = get_config('pt_dec')
@@ -51,6 +54,8 @@ def test_initialize_uvh5_file(tmpdir: str):
 
 
 def test_update_uvh5_file(tmpdir: str):
+    if socket.gethostname() != get_config('localhost'):
+        return
     if not os.path.exists(f"{tmpdir}/test.hdf5"):
         test_initialize_uvh5_file(tmpdir)
 
