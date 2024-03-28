@@ -130,10 +130,16 @@ def generate_fringestopping_table(
     # Use the first antenna as the refant so that the baselines are in
     # the same order as the antennas
     refidxs = []
-    refant = str(antenna_order[0])
-    for i, bn in enumerate(bname):
-        if refant in bn:
-            refidxs += [i]
+    idx = 0
+    for j in np.arange(len(antenna_order)):
+        for i in np.arange(j+1):
+            if i==0:
+                refidxs += [idx]
+            idx += 1
+    
+#    for i, bn in enumerate(bname):
+#        if refant in bn:
+#            refidxs += [i]
 
     # Get the geometric delays at the "source" position and meridian
     dt = np.arange(nint) * tsamp
