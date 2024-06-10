@@ -15,7 +15,7 @@ import dsamfs.utils as pu
 from dsamfs.io import dada_to_uvh5
 
 
-def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir=None):
+def run_fringestopping(param_file=None, header_file=None, output_dir=None, working_dir=None, nsfrb=False):
     """Read in data, fringestop on zenith, and write to hdf5 file.
     Parameters
     ----------
@@ -34,7 +34,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
     test, key_string, nant, nchan, npol, fobs, samples_per_frame, \
         samples_per_frame_out, nint, nfreq_int, antenna_order, pt_dec, \
         tsamp, fringestop, filelength_minutes, outrigger_delays, refmjd, subband = \
-        pu.parse_params(param_file)
+        pu.parse_params(param_file=param_file,nsfrb=nsfrb)
     nbls = (nant * (nant + 1)) // 2
     key = int(f"0x{key_string}", 16)
 

@@ -330,7 +330,7 @@ def baseline_uvw(antenna_order, pt_dec, refmjd, autocorrs=True, casa_order=False
     return bname, blen, uvw
 
 
-def parse_params(param_file=None):
+def parse_params(param_file=None,nsfrb=False):
     """Parses parameter file.
 
     Parameters
@@ -382,6 +382,11 @@ def parse_params(param_file=None):
     outrigger_delays = mfs_cnf['outrigger_delays']
 
     refmjd = mfs_cnf['refmjd']
+
+    # for NSFRB search
+    if nsfrb:
+        nint=1
+        nfreq_int=32
 
     assert (samples_per_frame_out * nint) % samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
