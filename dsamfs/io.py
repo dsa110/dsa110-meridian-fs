@@ -242,7 +242,7 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
 def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
                  fs_table, tsamp, bname, uvw, fobs,
-                 vis_model, test, nmins, subband, snapdelays, ant_itrf, nants_telescope):
+                 vis_model, test, nmins, subband, snapdelays, ant_itrf, nants_telescope, nsfrb):
     """
     Reads dada buffer and writes to uvh5 file.
     """
@@ -378,21 +378,22 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 #print(f"Integration {idx_frame_out} done")
 
         os.rename(f"{fout}_incomplete.hdf5", f"{fout}.hdf5")
-        try:
-            etcd.put_dict(
-                '/cmd/cal',
-                {
-                    'cmd': 'rsync',
-                    'val':
+        if nsfrb is False:
+            try:
+                etcd.put_dict(
+                    '/cmd/cal',
                     {
-                        'hostname': hostname,
-                        'filename': f'{outdir}/{os.path.basename(fout)}.hdf5'
+                        'cmd': 'rsync',
+                        'val':
+                        {
+                            'hostname': hostname,
+                            'filename': f'{outdir}/{os.path.basename(fout)}.hdf5'
+                        }
                     }
-                }
-            )
-        except:
-            logger.error(
-                f"Could not reach ETCD to transfer {fout} from {hostname}")
+                )
+            except:
+                logger.error(
+                    f"Could not reach ETCD to transfer {fout} from {hostname}")
     try:
         reader.disconnect()
     except PSRDadaError:

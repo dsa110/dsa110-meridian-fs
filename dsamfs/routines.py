@@ -106,7 +106,7 @@ def run_fringestopping(param_file=None, header_file=None, output_dir=None, worki
         samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
         fs_table, tsamp, bname, uvw, fobs,
         vis_model, test, filelength_minutes, subband, snapdelays,
-        ant_itrf, nants_telescope
+        ant_itrf, nants_telescope, nsfrb
     )
 
     if test:

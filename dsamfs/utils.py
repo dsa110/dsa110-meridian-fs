@@ -386,7 +386,7 @@ def parse_params(param_file=None,nsfrb=False):
     # for NSFRB search
     if nsfrb:
         nint=1
-        nfreq_int=32
+        nfreq_int=192
 
     assert (samples_per_frame_out * nint) % samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."
