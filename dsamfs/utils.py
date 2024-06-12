@@ -236,6 +236,8 @@ def load_visibility_model(
     ndarray
         The visibility model to use for fringestopping.
     """
+    print("Looking for "+fs_table)
+    
     try:
         fs_data = np.load(fs_table, allow_pickle=True)
         assert fs_data['bw'].shape == (nint, blen.shape[0])
@@ -387,7 +389,7 @@ def parse_params(param_file=None,nsfrb=False):
     if nsfrb:
         nint=1
         nfreq_int=192
-        samples_per_frame_out=128
+        samples_per_frame_out=24
 
     assert (samples_per_frame_out * nint) % samples_per_frame == 0, \
         "Each frame out must contain an integer number of frames in."

@@ -19,6 +19,7 @@ import dsautils.dsa_store as ds
 import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
+import time
 
 try:
     from psrdada.exceptions import PSRDadaError
@@ -27,7 +28,7 @@ except:
 
 
 def initialize_uvh5_file(
-        fhdf, nfreq, npol, pt_dec, antenna_order, fobs, snapdelays, ant_itrf, nants_telescope, fs_table=None):
+        fhdf, nfreq, npol, pt_dec, antenna_order, fobs, snapdelays, ant_itrf, nants_telescope, nt, nbls, fs_table=None):
     """Initializes an HDF5 file according to the UVH5 specification.
 
     For details on the specification of the UVH5 file format, see the pyuvdata
@@ -133,8 +134,20 @@ def initialize_uvh5_file(
         dtype=np.float32)
     # nsamples tells us how many samples went into each integration
 
+    # all the resizing to a 5-min file
+    # except time array to keep track of stuff
+    print("Resizing...")
+    new_size = int(nt*nbls)
+    fhdf["Header"]["integration_time"].resize(new_size, axis=0)
+    fhdf["Header"]["uvw_array"].resize(new_size, axis=0)
+    fhdf["Header"]["ant_1_array"].resize(new_size, axis=0)
+    fhdf["Header"]["ant_2_array"].resize(new_size, axis=0)
+    fhdf["Data"]["visdata"].resize(new_size, axis=0)
+    fhdf["Data"]["flags"].resize(new_size, axis=0)
+    fhdf["Data"]["nsamples"].resize(new_size, axis=0)
 
-def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
+    
+def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples, ant_1_array, ant_2_array):
     """Appends new data to the uvh5 file.
 
     Currently assumes phasing at the meridian. To account for tracking, need to
@@ -160,34 +173,24 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
         each bin of `data`.  Same dimensions as `data`.
     """
     (nt, nbls, nchan, npol) = data.shape
-    assert t.shape[0] == nt
-    assert data.shape == nsamples.shape
-    assert uvw.shape[1] == nbls
-    assert uvw.shape[2] == 3
-
-    antenna_order = fhdf5["Header"]["antenna_names"][:]
-    ant_1_array = np.array(
-        [np.where(antenna_order == np.string_(bn.split('-')[0]))
-         for bn in bname], dtype=np.int
-    ).squeeze()
-    ant_2_array = np.array(
-        [np.where(antenna_order == np.string_(bn.split('-')[1]))
-         for bn in bname], dtype=np.int
-    ).squeeze()
+    #assert t.shape[0] == nt
+    #assert data.shape == nsamples.shape
+    #assert uvw.shape[1] == nbls
+    #assert uvw.shape[2] == 3
 
     old_size = fhdf5["Header"]["time_array"].shape[0]
     new_size = old_size + nt * nbls
 
     # TIME_ARRAY
     fhdf5["Header"]["time_array"].resize(new_size, axis=0)
-    fhdf5["Header"]["time_array"][old_size:] = np.tile(
+    fhdf5["Header"]["time_array"][old_size:new_size] = np.tile(
         t[:, np.newaxis],
         (1, nbls)
     ).flatten()
 
     # INTEGRATION_TIME
-    fhdf5["Header"]["integration_time"].resize(new_size, axis=0)
-    fhdf5["Header"]["integration_time"][old_size:] = np.ones(
+    #fhdf5["Header"]["integration_time"].resize(new_size, axis=0)
+    fhdf5["Header"]["integration_time"][old_size:new_size] = np.ones(
         (nt * nbls, ),
         dtype=np.float32
     ) * tsamp
@@ -195,50 +198,49 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
     # UVW_ARRAY
     # Note that the uvw and baseline convention for pyuvdata is B-A,
     # where vis=A^* B
-    fhdf5["Header"]["uvw_array"].resize(new_size, axis=0)
+    #fhdf5["Header"]["uvw_array"].resize(new_size, axis=0)
     if uvw.shape[0] == 1:
-        fhdf5["Header"]["uvw_array"][old_size:, :] = np.tile(
+        fhdf5["Header"]["uvw_array"][old_size:new_size, :] = np.tile(
             uvw,
             (nt, 1, 1)
         ).reshape(-1, 3)
     else:
         assert uvw.shape[0] == nt
-        fhdf5["Header"]["uvw_array"][old_size:, :] = uvw.reshape(-1, 3)
+        fhdf5["Header"]["uvw_array"][old_size:new_size, :] = uvw.reshape(-1, 3)
 
     # Ntimes and Nblts
     fhdf5["Header"]["Ntimes"][()] = new_size // nbls
     fhdf5["Header"]["Nblts"][()] = new_size
 
     # ANT_1_ARRAY
-    fhdf5["Header"]["ant_1_array"].resize(new_size, axis=0)
-    fhdf5["Header"]["ant_1_array"][old_size:] = np.tile(
+    #fhdf5["Header"]["ant_1_array"].resize(new_size, axis=0)
+    fhdf5["Header"]["ant_1_array"][old_size:new_size] = np.tile(
         ant_1_array[np.newaxis, :],
         (nt, 1)
     ).flatten()
 
     # ANT_2_ARRAY
-    fhdf5["Header"]["ant_2_array"].resize(new_size, axis=0)
-    fhdf5["Header"]["ant_2_array"][old_size:] = np.tile(
+    #fhdf5["Header"]["ant_2_array"].resize(new_size, axis=0)
+    fhdf5["Header"]["ant_2_array"][old_size:new_size] = np.tile(
         ant_2_array[np.newaxis, :],
         (nt, 1)
     ).flatten()
 
     # VISDATA
-    fhdf5["Data"]["visdata"].resize(new_size, axis=0)
-    fhdf5["Data"]["visdata"][old_size:, ...] = data.reshape(
+    #fhdf5["Data"]["visdata"].resize(new_size, axis=0)
+    fhdf5["Data"]["visdata"][old_size:new_size, ...] = data.reshape(
         nt * nbls, 1, nchan, npol)
 
     # FLAGS
-    fhdf5["Data"]["flags"].resize(new_size, axis=0)
-    fhdf5["Data"]["flags"][old_size:, ...] = np.zeros(
+    #fhdf5["Data"]["flags"].resize(new_size, axis=0)
+    fhdf5["Data"]["flags"][old_size:new_size, ...] = np.zeros(
         (nt * nbls, 1, nchan, npol), dtype=np.bool)
 
     # NSAMPLES
-    fhdf5["Data"]["nsamples"].resize(new_size, axis=0)
-    fhdf5["Data"]["nsamples"][old_size:, ...] = nsamples.reshape(
+    #fhdf5["Data"]["nsamples"].resize(new_size, axis=0)
+    fhdf5["Data"]["nsamples"][old_size:new_size, ...] = nsamples.reshape(
         nt * nbls, 1, nchan, npol)
-
-
+    
 def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
                  fs_table, tsamp, bname, uvw, fobs,
@@ -249,6 +251,9 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
     # file logging
     #logfl = open("/home/ubuntu/data/mfslog.txt","w")
+
+    tim_read = 0.
+    tim_write = 0.
     
     etcd = ds.DsaStore()
 
@@ -271,9 +276,9 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     data_in = np.ones(
         (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64) * np.nan
-    data_reset = np.ones(
-        (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
-        dtype=np.complex64) * np.nan
+    #data_reset = np.ones(
+    #    (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
+    #    dtype=np.complex64) * np.nan
     nsamples = np.ones((samples_per_frame_out, nbls, nchan * nfreq_int, npol)) * nint
     nsamples = np.mean(nsamples.reshape(
         nsamples.shape[0], nsamples.shape[1], nchan,
@@ -281,7 +286,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     data = np.ones(
         (samples_per_frame_out, nbls, nchan * nfreq_int, npol),
         dtype=np.complex64)
-    
+            
     while not nans:
         now = datetime.utcnow()
         fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
@@ -292,17 +297,31 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
             #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
             #logfl.write(f'{nownow}: Initializing file')
+            print("Initializing...")
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
-                                 fobs, snapdelays, ant_itrf, nants_telescope, fs_table)
+                                 fobs, snapdelays, ant_itrf, nants_telescope,
+                                 max_frames_per_file, nbls, fs_table=fs_table)
+            antenna_order = fhdf5["Header"]["antenna_names"][:]
+            ant_1_array = np.array(
+                [np.where(antenna_order == np.string_(bn.split('-')[0]))
+                 for bn in bname], dtype=np.int
+            ).squeeze()
+            ant_2_array = np.array(
+                [np.where(antenna_order == np.string_(bn.split('-')[1]))
+                 for bn in bname], dtype=np.int
+            ).squeeze()
 
+            print("Initialized")
+            
             idx_frame_file = 0  # number of fsed frames write to curent file
             while (idx_frame_file < max_frames_per_file) and (not nans):
                 
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-                #logfl.write(f'{nownow}: start of loop\n')
-
+                #logfl.write(f'{nownow}: start of loop\n')                
+                
                 # copy data_reset to data_in
-                np.copyto(data_in, data_reset)
+                data_in[:] = np.nan
+                #np.copyto(data_in, data_reset)
                 
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: made data')
@@ -323,7 +342,7 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: read from buffer\n')
-
+                
                 if idx_frame_out == 0:
                     if test:
                         tstart = 59000.5
@@ -335,18 +354,26 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 
                 
                 #data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
-                data_in /= vis_model
+
+                # fringestop
+
+                
+                
+                data_in /= vis_model                
+
+                tt = time.perf_counter()
                 if nans:
                     nsamples = np.count_nonzero(~np.isnan(data), axis=1)
                     data = np.nanmean(data_in, axis=1)                    
                 else:
-                    data = np.mean(data_in, axis=1)                    
+                    data = np.mean(data_in, axis=1)
 
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: fringestopped\n')
 
                 t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                            sample_rate_out)
+                
                 if nfreq_int > 1:
                     if not nans:
                         data = np.mean(data.reshape(
@@ -363,18 +390,28 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: reshaped\n')
+                tt1 = time.perf_counter()
+                tim_read += tt1-tt
 
+                tt = time.perf_counter()
                 update_uvh5_file(
                     fhdf5, data, t, tsamp*nint, bname, uvw,
-                    nsamples
+                    nsamples, ant_1_array, ant_2_array
                 )
-
+                tt1 = time.perf_counter()
+                tim_write += tt1-tt
+                
                 #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
                 #logfl.write(f'{nownow}: updated uvh5\n')
 
 
                 idx_frame_out += 1
-                idx_frame_file += 1
+                idx_frame_file += samples_per_frame_out
+
+                print(tim_read,tim_write,samples_per_frame_out*2048*65.536e-6)
+                tim_read = 0.
+                tim_write = 0.
+                
                 #print(f"Integration {idx_frame_out} done")
 
         os.rename(f"{fout}_incomplete.hdf5", f"{fout}.hdf5")
