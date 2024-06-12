@@ -269,7 +269,11 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
 
     nans = False
     idx_frame_out = 0  # total number of fsed frames, for timekeeping
-    max_frames_per_file = int(np.ceil(nmins * 60 * sample_rate_out))
+    #max_frames_per_file = nmins samples_per_frame_out
+    if nsfrb:
+        max_frames_per_file = int(samples_per_frame_out*(np.floor((nmins * 60 / (2048.*65.536e-6)) / (1.*samples_per_frame_out))+1))
+    else:
+        max_frames_per_file = int(np.ceil(nmins * 60 * sample_rate_out))
     hostname = socket.gethostname()
 
     # allocate all big arrays to enable memory reuse
@@ -431,6 +435,23 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
             except:
                 logger.error(
                     f"Could not reach ETCD to transfer {fout} from {hostname}")
+        else:
+            try:
+                etcd.put_dict(
+                    '/cmd/nsfrb',
+                    {
+                        'cmd': 'rsync',
+                        'val':
+                        {
+                            'hostname': hostname,
+                            'filename': f'{outdir}/{os.path.basename(fout)}.hdf5'
+                        }
+                    }
+                )
+            except:
+                logger.error(
+                    f"Could not reach ETCD to transfer {fout} from {hostname}")
+                
     try:
         reader.disconnect()
     except PSRDadaError:
