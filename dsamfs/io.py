@@ -305,13 +305,13 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
                                  fobs, snapdelays, ant_itrf, nants_telescope,
                                  max_frames_per_file, nbls, fs_table=fs_table)
-            antenna_order = fhdf5["Header"]["antenna_names"][:]
+            ao = fhdf5["Header"]["antenna_names"][:]
             ant_1_array = np.array(
-                [np.where(antenna_order == np.string_(bn.split('-')[0]))
+                [np.where(ao == np.string_(bn.split('-')[0]))
                  for bn in bname], dtype=np.int
             ).squeeze()
             ant_2_array = np.array(
-                [np.where(antenna_order == np.string_(bn.split('-')[1]))
+                [np.where(ao == np.string_(bn.split('-')[1]))
                  for bn in bname], dtype=np.int
             ).squeeze()
 
