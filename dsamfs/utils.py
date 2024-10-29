@@ -330,7 +330,7 @@ def baseline_uvw(antenna_order, pt_dec, refmjd, autocorrs=True, casa_order=False
     return bname, blen, uvw
 
 
-def parse_params(param_file=None,nsfrb=False):
+def parse_params(param_file=None,nsfrb=False,spl=False):
     """Parses parameter file.
 
     Parameters
@@ -376,6 +376,15 @@ def parse_params(param_file=None,nsfrb=False):
         ch0 = 3400
         subband = 0
         LOGGER.error(f"host {hname} not in correlator.  Excepted {exc}")
+
+    if spl:
+        try:
+            nfreq_int = mfs_cnf['nfreq_int_spl'][hname]
+            nint = mfs_cnf['nint_spl'][hname]
+        except (KeyError, ValueError) as exc:
+            LOGGER.error(f"host {hname} not in correlator.  Keeping default nint and nfreq_int. Excepted {exc}")
+
+        
     nchan_spw = corr_cnf['nchan_spw']
     fobs = fobs[ch0:ch0 + nchan_spw]
     filelength_minutes = mfs_cnf['filelength_minutes']

@@ -242,7 +242,7 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
 def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
                  fs_table, tsamp, bname, uvw, fobs,
-                 vis_model, test, nmins, subband, snapdelays, ant_itrf, nants_telescope, nsfrb):
+                 vis_model, test, nmins, subband, snapdelays, ant_itrf, nants_telescope, nsfrb, spl):
     """
     Reads dada buffer and writes to uvh5 file.
     """
@@ -284,7 +284,10 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     
     while not nans:
         now = datetime.utcnow()
-        fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
+        if spl:
+            fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}_spl"
+        else:
+            fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
         if working_dir is not None:
             fout = '{0}/{1}'.format(working_dir, fout)
         #logfl.write('Opening output file {0}.hdf5'.format(fout))

@@ -20,19 +20,24 @@ else:
     WORKING_DIR = None
 
 if len(sys.argv) > 3:
+    SPL=True
+else:
+    SPL=False
+
+if len(sys.argv) > 4:
     NSFRB=True
 else:
     NSFRB=False
 
-if len(sys.argv) > 4:
-    PARAM_FILE = sys.argv[4]
+if len(sys.argv) > 5:
+    PARAM_FILE = sys.argv[5]
 else:
     PARAM_FILE = None
 
-if len(sys.argv) > 5:
-    HEADER_FILE = sys.argv[5]
+if len(sys.argv) > 6:
+    HEADER_FILE = sys.argv[6]
 else:
     HEADER_FILE = None
 
 run_fringestopping(
-    PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR, working_dir=WORKING_DIR, nsfrb=NSFRB)
+    PARAM_FILE, header_file=HEADER_FILE, output_dir=OUTDIR, working_dir=WORKING_DIR, nsfrb=NSFRB, spl=SPL)
