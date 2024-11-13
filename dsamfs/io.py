@@ -20,10 +20,10 @@ import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
 
-try:
-    from psrdada.exceptions import PSRDadaError
-except:
-    pass
+#try:
+#    from psrdada.exceptions import PSRDadaError
+#except:
+#    pass
 
 
 def initialize_uvh5_file(
