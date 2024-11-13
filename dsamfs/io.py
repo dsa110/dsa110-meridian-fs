@@ -20,13 +20,14 @@ import dsacalib.constants as ct
 import dsamfs.utils as pu
 from dsamfs.fringestopping import fringestop_on_zenith
 
-try:
-    from psrdada.exceptions import PSRDadaError
-except:
-    pass
+#try:
+#    from psrdada.exceptions import PSRDadaError
+#except:
+#    pass
+
 
 def initialize_uvh5_file(
-        fhdf, nfreq, npol, pt_dec, antenna_order, fobs, fs_table=None):
+        fhdf, nfreq, npol, pt_dec, antenna_order, fobs, snapdelays, ant_itrf, nants_telescope, fs_table=None):
     """Initializes an HDF5 file according to the UVH5 specification.
 
     For details on the specification of the UVH5 file format, see the pyuvdata
@@ -49,16 +50,7 @@ def initialize_uvh5_file(
     fs_table : str
         The full path to the table used in fringestopping.  Defaults None.
     """
-    # also need the itrf coordinates of the antennas
-    df = get_itrf(
-        latlon_center=(ct.OVRO_LAT * u.rad, ct.OVRO_LON * u.rad, ct.OVRO_ALT * u.m)
-    )
-    ant_itrf = np.array([df['dx_m'], df['dy_m'], df['dz_m']]).T
-    nants_telescope = max(df.index)
-    # have to have some way of calculating the ant_1_array and
-    # ant_2_array order and uvw array.  The uvw array should be constant but
-    # still has to have dimensions (nblts, 3)
-
+    print(f"snapdelays: {snapdelays}")
     # Header parameters
     header = fhdf.create_group("Header")
     data = fhdf.create_group("Data")
@@ -125,7 +117,6 @@ def initialize_uvh5_file(
     extra["phase_center_epoch"] = 'HADEC'
     if fs_table is not None:
         extra["fs_table"] = np.string_(fs_table)
-    snapdelays = pu.get_delays(np.array(antenna_order), nants_telescope)
     extra["applied_delays_ns"] = np.string_(
         ' '.join([str(d) for d in snapdelays.flatten()])
     )
@@ -251,11 +242,14 @@ def update_uvh5_file(fhdf5, data, t, tsamp, bname, uvw, nsamples):
 def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int,
                  samples_per_frame_out, sample_rate_out, pt_dec, antenna_order,
                  fs_table, tsamp, bname, uvw, fobs,
-                 vis_model, test, nmins, subband):
+                 vis_model, test, nmins, subband, snapdelays, ant_itrf, nants_telescope):
     """
     Reads dada buffer and writes to uvh5 file.
     """
 
+    # file logging
+    #logfl = open("/home/ubuntu/data/mfslog.txt","w")
+    
     etcd = ds.DsaStore()
 
     logger = dsl.DsaSyslogger()
@@ -273,42 +267,84 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
     max_frames_per_file = int(np.ceil(nmins * 60 * sample_rate_out))
     hostname = socket.gethostname()
 
+    # allocate all big arrays to enable memory reuse
+    data_in = np.ones(
+        (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
+        dtype=np.complex64) * np.nan
+    data_reset = np.ones(
+        (samples_per_frame_out, nint, nbls, nchan * nfreq_int, npol),
+        dtype=np.complex64) * np.nan
+    nsamples = np.ones((samples_per_frame_out, nbls, nchan * nfreq_int, npol)) * nint
+    nsamples = np.mean(nsamples.reshape(
+        nsamples.shape[0], nsamples.shape[1], nchan,
+        nfreq_int, npol), axis=3)
+    data = np.ones(
+        (samples_per_frame_out, nbls, nchan * nfreq_int, npol),
+        dtype=np.complex64)
+    
     while not nans:
         now = datetime.utcnow()
         fout = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}_sb{subband:02d}"
         if working_dir is not None:
             fout = '{0}/{1}'.format(working_dir, fout)
-        print('Opening output file {0}.hdf5'.format(fout))
+        #logfl.write('Opening output file {0}.hdf5'.format(fout))
         with h5py.File('{0}_incomplete.hdf5'.format(fout), 'w') as fhdf5:
+
+            #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+            #logfl.write(f'{nownow}: Initializing file')
             initialize_uvh5_file(fhdf5, nchan, npol, pt_dec, antenna_order,
-                                 fobs, fs_table)
+                                 fobs, snapdelays, ant_itrf, nants_telescope, fs_table)
 
             idx_frame_file = 0  # number of fsed frames write to curent file
             while (idx_frame_file < max_frames_per_file) and (not nans):
-                data_in = np.ones(
-                    (samples_per_frame_out * nint, nbls, nchan * nfreq_int, npol),
-                    dtype=np.complex64) * np.nan
+                
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: start of loop\n')
+
+                # copy data_reset to data_in
+                np.copyto(data_in, data_reset)
+                
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: made data')
                 for i in range(data_in.shape[0]):
-                    try:
-                        assert reader.isConnected
-                        data_in[i, ...] = pu.read_buffer(
-                            reader, nbls, nchan * nfreq_int, npol)
-                    except (AssertionError, ValueError, PSRDadaError) as e:
-                        print(f"Last integration has {i} timesamples")
-                        logger.info(
-                            f"Disconnected from buffer with message {type(e).__name__}:\n"
-                            f"{''.join(traceback.format_tb(e.__traceback__))}")
-                        nans = True
-                        break
+                    for j in range(data_in.shape[1]):
+                        try:
+                            assert reader.isConnected
+                            data_in[i,j, ...] = pu.read_buffer(
+                                reader, nbls, nchan * nfreq_int, npol)
+
+                        except (AssertionError, ValueError, PSRDadaError) as e:
+                            print(f"Last integration has {i*nint+j} timesamples")
+                            logger.info(
+                                f"Disconnected from buffer with message {type(e).__name__}:\n"
+                                f"{''.join(traceback.format_tb(e.__traceback__))}")
+                            nans = True
+                            break
+
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: read from buffer\n')
 
                 if idx_frame_out == 0:
                     if test:
                         tstart = 59000.5
                     else:
-                        tstart = pu.get_time()
-                    tstart += (nint * tsamp / 2) / ct.SECONDS_PER_DAY + 2400000.5
+                        tstart = pu.get_time(etcd)
+                    tstart += (
+                        (nint * tsamp / 2) / ct.SECONDS_PER_DAY + 2400000.5)
 
-                data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
+                
+                
+                #data, nsamples = fringestop_on_zenith(data_in, vis_model, nans)
+                data_in /= vis_model
+                if nans:
+                    nsamples = np.count_nonzero(~np.isnan(data), axis=1)
+                    data = np.nanmean(data_in, axis=1)                    
+                else:
+                    data = np.mean(data_in, axis=1)                    
+
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: fringestopped\n')
+
                 t, tstart = pu.update_time(tstart, samples_per_frame_out,
                                            sample_rate_out)
                 if nfreq_int > 1:
@@ -316,9 +352,6 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                         data = np.mean(data.reshape(
                             data.shape[0], data.shape[1], nchan, nfreq_int,
                             npol), axis=3)
-                        nsamples = np.mean(nsamples.reshape(
-                            nsamples.shape[0], nsamples.shape[1], nchan,
-                            nfreq_int, npol), axis=3)
                     else:
                         data = np.nanmean(data.reshape(
                             data.shape[0], data.shape[1], nchan,
@@ -328,14 +361,22 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                             nsamples.shape[0], nsamples.shape[1], nchan,
                             nfreq_int, npol), axis=3)
 
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: reshaped\n')
+
                 update_uvh5_file(
-                    fhdf5, data, t, tsamp, bname, uvw,
+                    fhdf5, data, t, tsamp*nint, bname, uvw,
                     nsamples
                 )
 
+                #nownow = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+                #logfl.write(f'{nownow}: updated uvh5\n')
+
+
                 idx_frame_out += 1
                 idx_frame_file += 1
-                print(f"Integration {idx_frame_out} done")
+                #print(f"Integration {idx_frame_out} done")
+
         os.rename(f"{fout}_incomplete.hdf5", f"{fout}.hdf5")
         try:
             etcd.put_dict(
@@ -350,7 +391,8 @@ def dada_to_uvh5(reader, outdir, working_dir, nbls, nchan, npol, nint, nfreq_int
                 }
             )
         except:
-            logger.error(f"Could not reach ETCD to transfer {fout} from {hostname}")
+            logger.error(
+                f"Could not reach ETCD to transfer {fout} from {hostname}")
     try:
         reader.disconnect()
     except PSRDadaError:
